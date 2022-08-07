@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ek-crawler"
+version = "0.0.1"
+dependencies = [
+    "aiohttp<4",
+    "beautifulsoup4"
+]
+
+[project.scripts]
+ek-crawler = "ek_crawler.crawler:main"
