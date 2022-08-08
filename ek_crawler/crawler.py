@@ -73,6 +73,7 @@ class Config:
     """Overall configuration object"""
 
     filter: FilterConfig = dataclasses.field(default_factory=FilterConfig)
+    notifications: dict[str, dict[str, ty.Any]] = dataclasses.field(default_factory=dict)
     searches: list[SearchConfig] = dataclasses.field(default_factory=list)
 
 
@@ -259,5 +260,7 @@ def load_config(config_file: pathlib.Path) -> Config:
     if not searches:
         _logger.warning("No searches configured in '%s'", config_file)
 
-    return Config(filter=filter_config, searches=searches)
-
+    notifications = config_dict.get("notifications",dict())
+    if not notifications:
+        _logger.warning("No notifications configured in '%s'", config_file)
+    return Config(filter=filter_config, notifications=notifications, searches=searches)

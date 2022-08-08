@@ -8,15 +8,17 @@ import pathlib
 import sys
 import textwrap
 
+from ek_crawler import notifications
 from ek_crawler.crawler import (
     Config,
     DataclassesJSONEncoder,
-    SearchConfig,
-    load_config,
     DataStore,
     Result,
+    SearchConfig,
     get_new_aditems,
+    load_config,
 )
+from ek_crawler.notifications import pushover
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
 
@@ -93,6 +95,9 @@ def get_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+NOTIFICATION_CALLBACKS: dict[str, notifications.SendNotification] = {"pushover": pushover.send_notifications}
+
+
 async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, **kwargs):
 
     config = load_config(config_file)
@@ -111,15 +116,26 @@ async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, **kwargs
             result.num_already_in_datastore,
             result.num_excluded,
         )
-        for aditem in result.aditems:
-            _logger.info(f"  %s", aditem)
+
+    for notification_type, notification_settings in config.notifications.items():
+        try:
+            notification_callback = NOTIFICATION_CALLBACKS[notification_type]
+        except KeyError:
+            _logger.error("No notification callback registered for key '%s'", notification_type)
+            continue
+        _logger.info("Call notification callback for '%s'", notification_type)
+        await notification_callback(results, notification_settings)
 
 
 def create_config(config_file: pathlib.Path, **kwargs):
     with open(config_file, "w") as f:
-        config = Config(searches=[DUMMY_SEARCH_CONFIG])
+
+        config = Config(
+            notifications={"pushover": pushover.PushoverConfig.to_default_dict()}, searches=[DUMMY_SEARCH_CONFIG]
+        )
         json.dump(config, f, cls=DataclassesJSONEncoder, indent=2)
     _logger.info("Created default config file at '%s'", config_file)
+
 
 async def async_main():
     """Async main function."""
