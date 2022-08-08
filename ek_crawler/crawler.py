@@ -299,11 +299,17 @@ async def amain():
     for result in results:
         _logger.info("Results for query '%s', excluded %d results", result.search_config.name, result.num_excluded)
         for aditem in result.aditems:
-            _logger.info(f"  %s", aditem)
+        _logger.info(
+            "%d new results for query '%s', %d results already in data store, excluded %d results",
+            len(result.aditems),
+            result.search_config.name,
+            result.num_already_in_datastore,
+            result.num_excluded,
+        )
 
 
 def main():
-    asyncio.run(amain())
+    asyncio.run(async_main())
 
 
 if __name__ == "__main__":
