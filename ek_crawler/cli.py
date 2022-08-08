@@ -85,6 +85,13 @@ def get_argument_parser() -> argparse.ArgumentParser:
         default=pathlib.Path.home() / "ek-crawler-datastore.json",
         help="Data store where all already seen ads are stored [default: %(default)s]",
     )
+    run_parser.add_argument(
+        "--no-notifications",
+        dest="send_notifications",
+        action="store_false",
+        default=True,
+        help="Disable the sending of notifications for this run, useful to fill up the data store",
+    )
     add_config_file_argument(run_parser)
     run_parser.set_defaults(__func__=run)
 
@@ -98,7 +105,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
 NOTIFICATION_CALLBACKS: dict[str, notifications.SendNotification] = {"pushover": pushover.send_notifications}
 
 
-async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, **kwargs):
+async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, send_notifications: bool, **kwargs):
 
     config = load_config(config_file)
     with DataStore(data_store_file) as data_store:
@@ -116,6 +123,10 @@ async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, **kwargs
             result.num_already_in_datastore,
             result.num_excluded,
         )
+
+    if not send_notifications:
+        _logger.info("Skip sending of notifications")
+        return
 
     for notification_type, notification_settings in config.notifications.items():
         try:
