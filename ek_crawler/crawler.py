@@ -98,19 +98,11 @@ class DataStore(collections.UserDict[str, AdItem]):
 
 @dataclasses.dataclass
 class Result:
-    """Results of s search config"""
+    """Results of search config"""
 
     search_config: SearchConfig
     num_excluded: int = 0
     aditems: ty.List[AdItem] = dataclasses.field(default_factory=list)
-
-
-DUMMY_SEARCH_CONFIGS = [
-    SearchConfig(
-        name="Wohnungen in Hamburg Altona",
-        url="https://www.ebay-kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
-    )
-]
 
 
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
@@ -154,6 +146,20 @@ async def get_aditems_from_soups(soups: ty.List[bs4.BeautifulSoup], url: str) ->
 
 
 async def get_new_aditems(search_config: SearchConfig, filter_config: FilterConfig, data_store: DataStore) -> Result:
+    """
+    Return a result for a search configuration
+
+    The result will only contain all new AdItems which are not yet in the data store and not excluded by the filters
+
+    :param search_config: Search configuration to get the AdItems from
+    :type search_config: SearchConfig
+    :param filter_config: Filter configuration for the AdItems
+    :type filter_config: FilterConfig
+    :param data_store: Data store object to check if aditem is new
+    :type data_store: DataStore
+    :return: Result for this search configuration
+    :rtype: Result
+    """
     result = Result(search_config)
     exclude_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in filter_config.exclude_patterns]
     async with aiohttp.ClientSession() as session:
@@ -163,30 +169,38 @@ async def get_new_aditems(search_config: SearchConfig, filter_config: FilterConf
 
         async for aditem in get_aditems_from_soups(soups, search_config.url):
             if aditem.id in data_store:
-                _logger.info("Ad '%s' with ID %s already in data store", aditem.title, aditem.id)
+                _logger.info("Ad item '%s' with ID %s already in data store", aditem.title, aditem.id)
                 continue
+
             exclude_aditem = False
 
-            _logger.debug("Ad with ID '%s' added to data store", aditem.id)
+            _logger.debug("Ad item '%s' with ID '%s' added to data store", aditem.title, aditem.id)
             data_store[aditem.id] = aditem
 
-            for pattern in exclude_patterns:
-                if pattern.match(aditem.title):
-                    _logger.debug(
-                        "Title of ad '%s' '%s' matches exclude pattern '%s'", aditem.id, aditem.title, pattern.pattern
-                    )
-                    exclude_aditem = True
-                    break
+            if filter_config.exclude_topads and aditem.is_topad:
+                exclude_aditem = True
 
-                if pattern.match(aditem.description):
-                    _logger.debug(
-                        "Description of ad '%s' '%s' matches exclude pattern '%s'",
-                        aditem.id,
-                        aditem.description,
-                        pattern.pattern,
-                    )
-                    exclude_aditem = True
-                    break
+            if not exclude_aditem:
+                for pattern in exclude_patterns:
+                    if pattern.match(aditem.title):
+                        _logger.debug(
+                            "Title of ad '%s' '%s' matches exclude pattern '%s'",
+                            aditem.id,
+                            aditem.title,
+                            pattern.pattern,
+                        )
+                        exclude_aditem = True
+                        break
+
+                    if pattern.match(aditem.description):
+                        _logger.debug(
+                            "Description of ad '%s' '%s' matches exclude pattern '%s'",
+                            aditem.id,
+                            aditem.description,
+                            pattern.pattern,
+                        )
+                        exclude_aditem = True
+                        break
 
             if exclude_aditem:
                 continue
@@ -196,7 +210,8 @@ async def get_new_aditems(search_config: SearchConfig, filter_config: FilterConf
         return result
 
 
-def configure_logging(verbose: bool):
+def configure_logging(verbose: bool) -> None:
+    """Configure stream logging"""
     level = logging.DEBUG if verbose else logging.INFO
     _logger.setLevel(level)
     stdout_handler = logging.StreamHandler(sys.stdout)
@@ -226,8 +241,22 @@ def load_config(config_file: pathlib.Path) -> Config:
 
 
 def get_argument_parser() -> argparse.ArgumentParser:
+
     example_config_file_text = textwrap.indent(
-        json.dumps(dataclasses.asdict(Config(searches=DUMMY_SEARCH_CONFIGS)), indent=2), prefix="    "
+        json.dumps(
+            dataclasses.asdict(
+                Config(
+                    searches=[
+                        SearchConfig(
+                            name="Wohnungen in Hamburg Altona",
+                            url="https://www.ebay-kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
+                        )
+                    ]
+                )
+            ),
+            indent=2,
+        ),
+        prefix="    ",
     )
     parser = argparse.ArgumentParser(
         prog="ek-crawler",
@@ -237,8 +266,8 @@ def get_argument_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--verbose", "-v", action="store_true", default=False, help="Enable verbose output")
 
+    parser.add_argument("--verbose", "-v", action="store_true", default=False, help="Enable verbose output")
     parser.add_argument(
         "--data-store",
         type=pathlib.Path,
