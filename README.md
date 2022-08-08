@@ -4,7 +4,15 @@ Simple crawler for Ebay Kleinanzeigen searches.
 
 ## Usage
 
-Create a configuration file, e.g:
+> For the full usage check the `ek-crawler --help` command
+
+Create a configuration file using
+
+``` bash
+ek-crawler create-config <path/to/config.json>
+```
+
+The example configuration file will look like this:
 
 ```json
 
@@ -17,15 +25,19 @@ Create a configuration file, e.g:
     {
       "name": "Wohnungen in Hamburg Altona",
       "url": "https://www.ebay-kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
-      "recursive": false
+      "recursive": true
     }
   ]
 }
 
 ```
 
+Modify the search configurations to your liking.
+
 Run
 
 ``` bash
-ek-crawler path/to/config.json
+ek-crawler run path/to/config.json
 ```
+
+to initialize the data store.

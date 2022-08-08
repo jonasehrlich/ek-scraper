@@ -1,1 +1,2 @@
-from .crawler import async_main, main
+from .cli import main
+from .crawler import Result

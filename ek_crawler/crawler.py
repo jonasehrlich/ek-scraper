@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import asyncio
 import collections
 import collections.abc
@@ -9,15 +8,13 @@ import json
 import logging
 import pathlib
 import re
-import sys
-import textwrap
 import typing as ty
 from urllib.parse import urljoin
 
 import aiohttp
 import bs4
 
-_logger = logging.getLogger()
+_logger = logging.getLogger(__name__.split(".", 1)[0])
 
 T = ty.TypeVar("T")
 
@@ -68,14 +65,14 @@ class FilterConfig:
     """Configuration of filters"""
 
     exclude_topads: bool = True
-    exclude_patterns: ty.List[str] = dataclasses.field(default_factory=list)
+    exclude_patterns: list[str] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
 class Config:
     """Overall configuration object"""
 
-    filter: FilterConfig = dataclasses.field(default=FilterConfig())
+    filter: FilterConfig = dataclasses.field(default_factory=FilterConfig)
     searches: list[SearchConfig] = dataclasses.field(default_factory=list)
 
 
@@ -112,7 +109,7 @@ class Result:
     search_config: SearchConfig
     num_already_in_datastore: int = 0
     num_excluded: int = 0
-    aditems: ty.List[AdItem] = dataclasses.field(default_factory=list)
+    aditems: list[AdItem] = dataclasses.field(default_factory=list)
 
 
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
@@ -251,22 +248,6 @@ async def get_new_aditems(search_config: SearchConfig, filter_config: FilterConf
         return result
 
 
-def configure_logging(verbose: bool) -> None:
-    """Configure stream logging"""
-    level = logging.DEBUG if verbose else logging.INFO
-    _logger.setLevel(level)
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.addFilter(lambda record: record.levelno < logging.WARNING)
-    stdout_handler.setFormatter(logging.Formatter("%(message)s"))
-
-    stderr_handler = logging.StreamHandler()
-    stderr_handler.setLevel(logging.WARNING)
-    stderr_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-
-    _logger.addHandler(stdout_handler)
-    _logger.addHandler(stderr_handler)
-
-
 def load_config(config_file: pathlib.Path) -> Config:
     """Load the configuration from the config path"""
     with open(config_file) as f:
@@ -280,80 +261,3 @@ def load_config(config_file: pathlib.Path) -> Config:
 
     return Config(filter=filter_config, searches=searches)
 
-
-def get_argument_parser() -> argparse.ArgumentParser:
-
-    example_config_file_text = textwrap.indent(
-        json.dumps(
-            dataclasses.asdict(
-                Config(
-                    searches=[
-                        SearchConfig(
-                            name="Wohnungen in Hamburg Altona",
-                            url="https://www.ebay-kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
-                        )
-                    ]
-                )
-            ),
-            indent=2,
-        ),
-        prefix="    ",
-    )
-    parser = argparse.ArgumentParser(
-        prog="ek-crawler",
-        description=(
-            f"Crawler for Ebay Kleinanzeigen search results.\n\n"
-            f"Example configuration file:\n\n{example_config_file_text}"
-        ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-
-    parser.add_argument("--verbose", "-v", action="store_true", default=False, help="Enable verbose output")
-    parser.add_argument(
-        "--data-store",
-        type=pathlib.Path,
-        default=pathlib.Path.home() / "ek-crawler-datastore.json",
-        help="Data store where all already seen ads are stored [default: %(default)s]",
-    )
-    parser.add_argument(
-        "config_file",
-        metavar="CONFIG_FILE",
-        type=pathlib.Path,
-        help="Configuration file with the search configurations",
-    )
-    return parser
-
-
-async def async_main():
-    """Async main function.
-    """
-    parser = get_argument_parser()
-    namespace = parser.parse_args()
-    configure_logging(namespace.verbose)
-    config = load_config(namespace.config_file)
-
-    with DataStore(namespace.data_store) as data_store:
-        tasks = list()
-        for search in config.searches:
-            tasks.append(get_new_aditems(search, config.filter, data_store=data_store))
-
-        results: ty.List[Result] = await asyncio.gather(*tasks)
-
-    for result in results:
-        _logger.info(
-            "%d new results for query '%s', %d results already in data store, excluded %d results",
-            len(result.aditems),
-            result.search_config.name,
-            result.num_already_in_datastore,
-            result.num_excluded,
-        )
-        for aditem in result.aditems:
-            _logger.info(f"  %s", aditem)
-
-
-def main():
-    asyncio.run(async_main())
-
-
-if __name__ == "__main__":
-    main()

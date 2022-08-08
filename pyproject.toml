@@ -8,8 +8,8 @@ version = "0.0.1"
 dependencies = [
     "aiohttp<4",
     "beautifulsoup4",
-    "lxml<5"
+    "lxml<5",
 ]
 
 [project.scripts]
-ek-crawler = "ek_crawler.crawler:main"
+ek-crawler = "ek_crawler.cli:main"
