@@ -1,19 +1,19 @@
-# EK Crawler
+# EK scraper
 
-Simple crawler for Ebay Kleinanzeigen searches.
+Simple scraper for Ebay Kleinanzeigen searches.
 
 ## Installation
 
 Clone this repository
 
 ``` bash
-git clone git@github.com:jonasehrlich/ek-crawler.git
+git clone git@github.com:jonasehrlich/ek-scraper.git
 ```
 
 Change into the repository
 
 ``` bash
-cd ek-crawler
+cd ek-scraper
 ```
 
 Install the repository using
@@ -24,12 +24,12 @@ pip3 install .
 
 ## Usage
 
-> For the full usage check the `ek-crawler --help` command
+> For the full usage check the `ek-scraper --help` command
 
 Create a configuration file using
 
 ``` bash
-ek-crawler create-config <path/to/config.json>
+ek-scraper create-config <path/to/config.json>
 ```
 
 The example configuration file will look like this:
@@ -65,14 +65,14 @@ as the `recursive` attribute will automatically resolve any pagination happening
 Run the following command to initialize the data store without sending any notifications
 
 ``` bash
-ek-crawler run --no-notifications path/to/config.json
+ek-scraper run --no-notifications path/to/config.json
 ```
 
 ### Configure notifications using Pushover
 
-`ek-crawler` supports push notifications to your mobile devices using [Pushover](https://pushover.net/).
+`ek-scraper` supports push notifications to your mobile devices using [Pushover](https://pushover.net/).
 For further information on the service check their terms and conditions.
 
-To configure _Pushover_ for notifications from the crawler, first register at the service and create an application
-(e.g. `ek-crawler`). To use the service in `ek-crawler`, add the `pushover` object to the `notifications` object in your
+To configure _Pushover_ for notifications from the scraper, first register at the service and create an application
+(e.g. `ek-scraper`). To use the service in `ek-scraper`, add the `pushover` object to the `notifications` object in your
 configuration file and fill the API tokens. Additional filtering by device is supported using the `device` field.

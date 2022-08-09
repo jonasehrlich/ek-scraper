@@ -8,8 +8,8 @@ import pathlib
 import sys
 import textwrap
 
-from ek_crawler import notifications
-from ek_crawler.crawler import (
+from ek_scraper import notifications
+from ek_scraper.scraper import (
     Config,
     DataclassesJSONEncoder,
     DataStore,
@@ -18,7 +18,7 @@ from ek_crawler.crawler import (
     get_new_aditems,
     load_config,
 )
-from ek_crawler.notifications import pushover
+from ek_scraper.notifications import pushover
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
 
@@ -52,7 +52,7 @@ def add_config_file_argument(parser: argparse.ArgumentParser):
         "config_file",
         metavar="CONFIG_FILE",
         type=pathlib.Path,
-        help="Configuration file for the crawler",
+        help="Configuration file for the scraper",
     )
 
 
@@ -66,9 +66,9 @@ def get_argument_parser() -> argparse.ArgumentParser:
         prefix="    ",
     )
     parser = argparse.ArgumentParser(
-        prog="ek-crawler",
+        prog="ek-scraper",
         description=(
-            f"Crawler for Ebay Kleinanzeigen search results.\n\n"
+            f"Scraper for Ebay Kleinanzeigen search results.\n\n"
             f"Example configuration file:\n\n{example_config_file_text}"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -77,12 +77,12 @@ def get_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verbose", "-v", action="store_true", default=False, help="Enable verbose output")
 
     subparsers = parser.add_subparsers()
-    run_parser = subparsers.add_parser("run", help="Run the crawler")
+    run_parser = subparsers.add_parser("run", help="Run the scraper")
     run_parser.add_argument(
         "--data-store",
         dest="data_store_file",
         type=pathlib.Path,
-        default=pathlib.Path.home() / "ek-crawler-datastore.json",
+        default=pathlib.Path.home() / "ek-scraper-datastore.json",
         help="Data store where all already seen ads are stored [default: %(default)s]",
     )
     run_parser.add_argument(
@@ -95,7 +95,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
     add_config_file_argument(run_parser)
     run_parser.set_defaults(__func__=run)
 
-    create_config_parser = subparsers.add_parser("create-config", help="Create a default config for the crawler")
+    create_config_parser = subparsers.add_parser("create-config", help="Create a default config for the scraper")
     add_config_file_argument(create_config_parser)
     create_config_parser.set_defaults(__func__=create_config)
 

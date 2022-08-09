@@ -8,7 +8,7 @@ import aiohttp
 import asyncio
 
 if ty.TYPE_CHECKING:
-    from ek_crawler.crawler import Result
+    from ek_scraper.scraper import Result
 
 BASE_URL = "https://api.pushover.net"
 
@@ -53,7 +53,7 @@ async def send_notification(session: aiohttp.ClientSession, config: PushoverConf
     :type session: aiohttp.ClientSession
     :param config: Configuration for pushover
     :type config: PushoverConfig
-    :param result: Result of the crawler
+    :param result: Result of the scraper
     :type result: Result
     """
     params = config.to_params()
@@ -67,9 +67,9 @@ async def send_notification(session: aiohttp.ClientSession, config: PushoverConf
 
 
 async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str, ty.Any]):
-    """Send notifications for all results from the crawler
+    """Send notifications for all results from the scraper
 
-    :param results: Results from the crawler
+    :param results: Results from the scraper
     :type results: ty.Sequence[Result]
     :param config_dict: Configuration for the notification
     :type config_dict: dict

@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing as ty
 
 if ty.TYPE_CHECKING:
-    from ek_crawler.crawler import Result
+    from ek_scraper.scraper import Result
 
 
 class SendNotification(ty.Protocol):

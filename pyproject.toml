@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ek-crawler"
+name = "ek-scraper"
 version = "0.0.1"
 dependencies = [
     "aiohttp<4",
@@ -12,4 +12,4 @@ dependencies = [
 ]
 
 [project.scripts]
-ek-crawler = "ek_crawler.cli:main"
+ek-scraper = "ek_scraper.cli:main"
