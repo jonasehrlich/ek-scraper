@@ -30,6 +30,7 @@ dependencies = [
 dev = [
     "black==22.6.0",
     "pre-commit",
+    "types-beautifulsoup4"
 ]
 
 [project.urls]
