@@ -40,5 +40,8 @@ repository = "https://github.com/jonasehrlich/ek-scraper"
 [project.scripts]
 ek-scraper = "ek_scraper.cli:main"
 
+[tool.setuptools]
+packages = ["ek_scraper"]
+
 [tool.black]
 line-length = 120
