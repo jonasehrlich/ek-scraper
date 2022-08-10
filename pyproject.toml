@@ -28,7 +28,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "black",
+    "black==22.6.0",
+    "pre-commit",
 ]
 
 [project.urls]

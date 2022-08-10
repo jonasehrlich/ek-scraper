@@ -260,7 +260,7 @@ def load_config(config_file: pathlib.Path) -> Config:
     if not searches:
         _logger.warning("No searches configured in '%s'", config_file)
 
-    notifications = config_dict.get("notifications",dict())
+    notifications = config_dict.get("notifications", dict())
     if not notifications:
         _logger.warning("No notifications configured in '%s'", config_file)
     return Config(filter=filter_config, notifications=notifications, searches=searches)
