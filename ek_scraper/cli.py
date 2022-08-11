@@ -8,9 +8,8 @@ import pathlib
 import sys
 import textwrap
 
-from ek_scraper import notifications
 from ek_scraper.__version__ import __version__
-from ek_scraper.notifications import pushover
+from ek_scraper.notifications import SendNotification, pushover
 from ek_scraper.scraper import (
     Config,
     DataclassesJSONEncoder,
@@ -103,7 +102,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-NOTIFICATION_CALLBACKS: dict[str, notifications.SendNotification] = {"pushover": pushover.send_notifications}
+NOTIFICATION_CALLBACKS: dict[str, SendNotification] = {"pushover": pushover.send_notifications}
 
 
 async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, send_notifications: bool, **kwargs):
