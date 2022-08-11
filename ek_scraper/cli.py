@@ -8,7 +8,7 @@ import pathlib
 import sys
 import textwrap
 
-from ek_scraper.__version__ import __version__
+from ek_scraper import __version__
 from ek_scraper.notifications import SendNotification, pushover
 from ek_scraper.scraper import (
     Config,
@@ -73,7 +73,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__.__version__}")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--verbose", "-v", action="store_true", default=False, help="Enable verbose output")
 
     subparsers = parser.add_subparsers()

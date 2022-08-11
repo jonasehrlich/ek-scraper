@@ -8,7 +8,7 @@ import aiohttp
 import asyncio
 
 if ty.TYPE_CHECKING:
-    from ek_scraper.scraper import Result
+    from ek_scraper import Result
 
 BASE_URL = "https://api.pushover.net"
 
