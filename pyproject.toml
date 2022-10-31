@@ -28,7 +28,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-    "black==22.6.0",
+    "black==22.10.0",
     "pre-commit",
     "types-beautifulsoup4"
 ]
