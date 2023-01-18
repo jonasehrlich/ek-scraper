@@ -161,22 +161,22 @@ async def resolve_all_pages(session: aiohttp.ClientSession, url: str, soup_map: 
 async def get_aditems_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncGenerator[AdItem, None]:
     """Get all ad items in a list of BeatifulSoup objects"""
     _logger.debug("Find all ad items in '%s'", url)
-    for aditem in soup.find_all("article", class_="aditem"):
-        calendar_icons = aditem.select(".icon-calendar-open")
+    for soup_aditem in soup.find_all("article", class_="aditem"):
+        calendar_icons = soup_aditem.select(".icon-calendar-open")
         if calendar_icons:
             added = ty.cast(str, calendar_icons[0].parent.text.strip())
         else:
             added = None
         aditem = AdItem(
-            id=aditem.get("data-adid"),
-            url=urljoin(url, aditem.get("data-href")),
-            title=aditem.select(".text-module-begin>a")[0].text.strip(),
-            description=aditem.select(".aditem-main--middle--description")[0].text.strip(),
-            location=aditem.select(".icon-pin")[0].parent.text.strip(),
-            price=aditem.select(".aditem-main--middle--price")[0].text.strip(),
+            id=soup_aditem.get("data-adid"),
+            url=urljoin(url, soup_aditem.get("data-href")),
+            title=soup_aditem.select(".text-module-begin>a")[0].text.strip(),
+            description=soup_aditem.select(".aditem-main--middle--description")[0].text.strip(),
+            location=soup_aditem.select(".icon-pin")[0].parent.text.strip(),
+            price=soup_aditem.select('p[class*="price"]')[0].text.strip(),
             added=added,
-            image_url=aditem.select(".imagebox")[0].get("data-imgsrc"),
-            is_topad=bool(aditem.select(".icon-feature-topad")),
+            image_url=soup_aditem.select(".imagebox")[0].get("data-imgsrc"),
+            is_topad=bool(soup_aditem.select(".icon-feature-topad")),
         )
         yield aditem
 
