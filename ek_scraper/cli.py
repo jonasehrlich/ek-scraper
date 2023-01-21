@@ -153,7 +153,11 @@ async def async_main():
     parser = get_argument_parser()
     namespace = parser.parse_args()
     configure_logging(namespace.verbose)
-    func = namespace.__func__
+
+    try:
+        func = namespace.__func__
+    except AttributeError:
+        parser.error(parser.format_usage())
 
     try:
         ret = func(**vars(namespace))
