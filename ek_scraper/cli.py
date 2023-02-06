@@ -57,7 +57,6 @@ def add_config_file_argument(parser: argparse.ArgumentParser):
 
 
 def get_argument_parser() -> argparse.ArgumentParser:
-
     example_config_file_text = textwrap.indent(
         json.dumps(
             dataclasses.asdict(Config(searches=[DUMMY_SEARCH_CONFIG])),
@@ -106,7 +105,6 @@ NOTIFICATION_CALLBACKS: dict[str, SendNotification] = {"pushover": pushover.send
 
 
 async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, send_notifications: bool, **kwargs):
-
     config = load_config(config_file)
     with DataStore(data_store_file) as data_store:
         tasks = list()
@@ -140,7 +138,6 @@ async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, send_not
 
 def create_config(config_file: pathlib.Path, **kwargs):
     with open(config_file, "w") as f:
-
         config = Config(
             notifications={"pushover": pushover.PushoverConfig.to_default_dict()}, searches=[DUMMY_SEARCH_CONFIG]
         )
