@@ -164,7 +164,7 @@ async def async_main():
         if namespace.verbose:
             _logger.exception("Error!")
 
-        parser.error(str(exc))
+        parser.exit(str(exc))
 
 
 def main():
