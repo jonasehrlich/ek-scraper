@@ -251,7 +251,7 @@ async def get_new_aditems(search_config: SearchConfig, filter_config: FilterConf
 
 def load_config(config_file: pathlib.Path) -> Config:
     """Load the configuration from the config path"""
-    with open(config_file) as f:
+    with config_file.open() as f:
         config_dict = json.load(f)
 
     filter_config = FilterConfig(**config_dict.get("filter", dict()))

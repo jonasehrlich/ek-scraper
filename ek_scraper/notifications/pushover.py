@@ -78,7 +78,7 @@ async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str
     try:
         config = PushoverConfig(**config_dict)
     except TypeError:
-        raise ValueError(f"Could not create PushoverConfig from {config_dict}")
+        raise ValueError(f"Could not create PushoverConfig from {config_dict}") from None
 
     async with aiohttp.ClientSession(BASE_URL) as session:
         tasks = list()

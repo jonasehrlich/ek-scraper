@@ -137,7 +137,7 @@ async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, send_not
 
 
 def create_config(config_file: pathlib.Path, **kwargs):
-    with open(config_file, "w") as f:
+    with config_file.open("w") as f:
         config = Config(
             notifications={"pushover": pushover.PushoverConfig.to_default_dict()}, searches=[DUMMY_SEARCH_CONFIG]
         )
