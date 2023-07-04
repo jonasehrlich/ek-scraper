@@ -25,7 +25,7 @@ _logger = logging.getLogger(__name__.split(".", 1)[0])
 
 DUMMY_SEARCH_CONFIG = SearchConfig(
     name="Wohnungen in Hamburg Altona",
-    url="https://www.ebay-kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
+    url="https://www.kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
 )
 
 
@@ -67,7 +67,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ek-scraper",
         description=(
-            f"Scraper for Ebay Kleinanzeigen search results.\n\n"
+            f"Scraper for kleinanzeigen.de search results.\n\n"
             f"Example configuration file:\n\n{example_config_file_text}"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -137,7 +137,7 @@ async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, send_not
 
 
 def create_config(config_file: pathlib.Path, **kwargs):
-    with open(config_file, "w") as f:
+    with config_file.open("w") as f:
         config = Config(
             notifications={"pushover": pushover.PushoverConfig.to_default_dict()}, searches=[DUMMY_SEARCH_CONFIG]
         )

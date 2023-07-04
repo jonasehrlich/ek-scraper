@@ -1,12 +1,12 @@
 # ek-scraper
 
-Simple scraper for Ebay Kleinanzeigen searches with notifications for new ads.
+Simple scraper for kleinanzeigen.de searches with notifications for new ads.
 
 ## Installation
 
 Install this package from PyPi using `pip`.
 
-``` bash
+``` sh
 pip3 install ek-scraper
 ```
 
@@ -16,14 +16,13 @@ pip3 install ek-scraper
 
 Create a configuration file using
 
-``` bash
+``` sh
 ek-scraper create-config <path/to/config.json>
 ```
 
 The example configuration file will look like this:
 
 ```json
-
 {
   "filter": {
     "exclude_topads": true,
@@ -39,12 +38,11 @@ The example configuration file will look like this:
   "searches": [
     {
       "name": "Wohnungen in Hamburg Altona",
-      "url": "https://www.ebay-kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
+      "url": "https://www.kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
       "recursive": true
     }
   ]
 }
-
 ```
 
 See [Configuration](#configuration) for details on all configuration options.
@@ -57,13 +55,13 @@ See [Configuration](#configuration) for details on all configuration options.
 
 Run the following command to initialize the data store without sending any notifications:
 
-``` bash
+``` sh
 ek-scraper run --no-notifications path/to/config.json
 ```
 
 Afterwards, run
 
-```bash
+```sh
 ek-scraper run path/to/config.json
 ```
 
@@ -75,31 +73,26 @@ Follow the steps below to set up a development environment for this project.
 
 1. Clone this repository
 
-   ``` bash
+   ``` sh
    git clone git@github.com:jonasehrlich/ek-scraper.git
    ```
 
-2. Change into the repository
+2. Change directory into the repository
 
-   ``` bash
+   ``` sh
    cd ek-scraper
    ```
 
-3. Create a virtual environment
+3. Create a virtual environment using [poetry](https://python-poetry.org)
 
-   ``` bash
-   python3 -m venv .venv && . .venv/bin/activate
+   ``` sh
+   poetry install
    ```
 
-4. Install the package as an editable installation along with its dev dependencies
-
-   ``` bash
-   pip3 install -e .[dev]
-   ```
 
 5. (Optional) Install pre-commit environment
 
-   ``` bash
+   ``` sh
    $ pre-commit
    [INFO] Installing environment for https://github.com/pre-commit/pre-commit-hooks.
    [INFO] Once installed this environment will be reused.
@@ -165,7 +158,7 @@ In order to run `ek-scraper` regularly on a Unix-like system, configure it as a 
 
 To configure a cronjob, run
 
-``` bash
+``` sh
 crontab -e
 ```
 

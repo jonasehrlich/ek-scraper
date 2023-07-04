@@ -1,3 +1,5 @@
+import importlib.metadata
+
 from .scraper import Result
 
-__version__ = "0.0.5"
+__version__ = importlib.metadata.version(__name__)
