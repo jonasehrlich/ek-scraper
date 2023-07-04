@@ -1,8 +1,8 @@
 name: Publish Python distributions to PyPI
-on: [push]
-  # push:
-  #   tags:
-  #     - v[0-9]+.[0-9]+.[0-9]+
+on:
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
 jobs:
   build-and-publish:
     name: Build and publish Python distributions 📦 to PyPI
@@ -33,7 +33,7 @@ jobs:
         uses: celsiusnarhwal/poetry-publish@v2
         with:
           python-version: 3.11
-          # token: ${{ secrets.PYPI_API_TOKEN }}
+          token: ${{ secrets.PYPI_API_TOKEN }}
           build: true
-          repo: testpypi
-          token: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          # repo: testpypi
+          # token: ${{ secrets.TEST_PYPI_API_TOKEN }}
