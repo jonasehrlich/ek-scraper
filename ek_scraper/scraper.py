@@ -167,17 +167,24 @@ async def get_aditems_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncGe
             added = ty.cast(str, calendar_icons[0].parent.text.strip())
         else:
             added = None
-        aditem = AdItem(
-            id=soup_aditem.get("data-adid"),
-            url=urljoin(url, soup_aditem.get("data-href")),
-            title=soup_aditem.select(".text-module-begin>a")[0].text.strip(),
-            description=soup_aditem.select(".aditem-main--middle--description")[0].text.strip(),
-            location=soup_aditem.select(".icon-pin")[0].parent.text.strip(),
-            price=soup_aditem.select('p[class*="price"]')[0].text.strip(),
-            added=added,
-            image_url=soup_aditem.select(".imagebox")[0].get("data-imgsrc"),
-            is_topad=bool(soup_aditem.select(".icon-feature-topad")),
-        )
+        try:
+            aditem = AdItem(
+                id=soup_aditem.get("data-adid"),
+                url=urljoin(url, soup_aditem.get("data-href")),
+                title=soup_aditem.select(".text-module-begin>a")[0].text.strip(),
+                description=soup_aditem.select(".aditem-main--middle--description")[0].text.strip(),
+                location=soup_aditem.select('i[class*="icon-pin"]')[0].parent.text.strip(),
+                price=soup_aditem.select('p[class*="price"]')[0].text.strip(),
+                added=added,
+                image_url=soup_aditem.select(".imagebox")[0].get("data-imgsrc"),
+                is_topad=bool(soup_aditem.select(".icon-feature-topad")),
+            )
+        except IndexError as exc:
+            raise RuntimeError(
+                "Error parsing ads, this is probably caused by changes on kleinanzeigen.de\n\n"
+                "Please run this command again with the --verbose option and open an issue with its "
+                "output at https://github.com/jonasehrlich/ek-scraper/issues"
+            ) from exc
         yield aditem
 
 
