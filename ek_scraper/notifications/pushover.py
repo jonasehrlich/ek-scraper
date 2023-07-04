@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import dataclasses
+import logging
 import typing as ty
 
-import logging
 import aiohttp
-import asyncio
 
 if ty.TYPE_CHECKING:
     from ek_scraper import Result
