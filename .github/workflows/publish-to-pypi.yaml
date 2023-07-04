@@ -1,0 +1,39 @@
+name: Publish Python distributions to PyPI
+on: [push]
+  # push:
+  #   tags:
+  #     - v[0-9]+.[0-9]+.[0-9]+
+jobs:
+  build-and-publish:
+    name: Build and publish Python distributions 📦 to PyPI
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    env:
+      POETRY_VERSION: "1.5.1"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Load cached Poetry installation
+        uses: actions/cache@v3
+        with:
+          path: ~/.local
+          key: ${{ runner.os }}-dotlocal-dir-py${{ matrix.python-version }}-poetry${{ env.POETRY_VERSION }}
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+      - name: Install dependencies
+        run: poetry install
+      - name: Publish to PyPI
+        uses: celsiusnarhwal/poetry-publish@v2
+        with:
+          python-version: 3.11
+          # token: ${{ secrets.PYPI_API_TOKEN }}
+          build: true
+          repo: testpypi
+          token: ${{ secrets.TEST_PYPI_API_TOKEN }}
