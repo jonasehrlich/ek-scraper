@@ -93,13 +93,13 @@ class DataStore(collections.UserDict[str, AdItem]):
 
     def open(self):
         try:
-            with open(self.path) as f:
+            with self.path.open() as f:
                 self.data = {key: AdItem(**value) for key, value in json.load(f).items()}
         except FileNotFoundError:
             _logger.warning("Data store does not exist at '%s', will be created when closing", self.path)
 
     def close(self):
-        with open(self.path, "w") as f:
+        with self.path.open("w") as f:
             json.dump(self.data, f, cls=DataclassesJSONEncoder, indent=2)
 
 
