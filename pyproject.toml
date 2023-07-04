@@ -35,3 +35,27 @@ line-length = 120
 profile = "black"
 line_length = 120
 src_paths = ["ek_scraper", "test"]
+
+[tool.ruff]
+line-length = 120
+select = [
+    "E",   # pycodestyle error rules
+    "F",   # pycodestyle warning rules
+    "B",   # flake8-bugbear rules
+    "S",   # flake8-bandit rules
+    "PTH", # flake8-use-pathlib
+    "PLC", # pylint convention rules
+    "PLR", # pylint refactor rules
+    "PLE", # pylint error rules
+    "PLW", # pylint warning rules
+    "C90", # mccabe complexity rules
+]
+
+[tool.ruff.per-file-ignores]
+# Disable assert-statement and magic-value-comparison rules for tests
+"test_*.py" = ["S101", "PLR2004"]
+# Disable unused-import rule for __init__.py files
+"__init__*.py" = ["F401",]
+
+[tool.ruff.pylint]
+max-args = 8
