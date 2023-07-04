@@ -1,50 +1,36 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[project]
+[tool.poetry]
 name = "ek-scraper"
+version = "0.1.0"
 description = "Simple scraper for Ebay Kleinanzeigen searches with notifications for new ads."
+authors = ["Jonas Ehrlich <jonas.ehrlich@gmail.com>"]
+license = "MIT"
 readme = "README.md"
-requires-python = ">=3.9"
-license = {text = "MIT"}
-keywords = ["scraper"]
-authors = [
-  {name = "Jonas Ehrlich"}, {email = "jonas.ehrlich@gmail.com"},
-]
-classifiers = [
-  "Development Status :: 3 - Alpha",
-  "Environment :: Console",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: OS Independent",
-  "Programming Language :: Python",
-]
-dependencies = [
-    "aiohttp<4",
-    "beautifulsoup4",
-    "lxml<5",
-]
-dynamic = ["version"]
-
-[project.optional-dependencies]
-dev = [
-    "black==23.3.0",
-    "pre-commit",
-    "types-beautifulsoup4"
-]
-
-[project.urls]
+packages = [{include = "ek_scraper"}]
 homepage = "https://github.com/jonasehrlich/ek-scraper"
 repository = "https://github.com/jonasehrlich/ek-scraper"
 
-[project.scripts]
+[tool.poetry.dependencies]
+python = "^3.9"
+beautifulsoup4 = "^4.12.2"
+aiohttp = "^3.8.4"
+lxml = "^4.9.2"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+types-beautifulsoup4 = "^4.12.0.5"
+isort = "^5.12.0"
+
+[tool.poetry.scripts]
 ek-scraper = "ek_scraper.cli:main"
-
-[tool.setuptools.packages.find]
-include = ["ek_scraper*"]
-
-[tool.setuptools.dynamic]
-version = {attr = "ek_scraper.__version__"}
 
 [tool.black]
 line-length = 120
+
+[tool.isort]
+profile = "black"
+line_length = 120
+src_paths = ["ek_scraper", "test"]
