@@ -9,7 +9,7 @@ import sys
 import textwrap
 
 from ek_scraper import __version__
-from ek_scraper.notifications import SendNotification, pushover
+from ek_scraper.notifications import SendNotification, ntfy_sh, pushover
 from ek_scraper.scraper import (
     Config,
     DataclassesJSONEncoder,
@@ -104,7 +104,10 @@ def get_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-NOTIFICATION_CALLBACKS: dict[str, SendNotification] = {"pushover": pushover.send_notifications}
+NOTIFICATION_CALLBACKS: dict[str, SendNotification] = {
+    "pushover": pushover.send_notifications,
+    "ntfy.sh": ntfy_sh.send_notifications,
+}
 
 
 async def run(
@@ -148,7 +151,11 @@ async def run(
 def create_config(config_file: pathlib.Path, **kwargs):
     with config_file.open("w") as f:
         config = Config(
-            notifications={"pushover": pushover.PushoverConfig.to_default_dict()}, searches=[DUMMY_SEARCH_CONFIG]
+            notifications={
+                "pushover": pushover.PushoverConfig.to_default_dict(),
+                "ntfy.sh": ntfy_sh.NtfyShConfig.to_default_dict(),
+            },
+            searches=[DUMMY_SEARCH_CONFIG],
         )
         json.dump(config, f, cls=DataclassesJSONEncoder, indent=2)
     _logger.info("Created default config file at '%s'", config_file)
