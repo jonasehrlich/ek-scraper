@@ -78,6 +78,9 @@ def get_argument_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers()
     run_parser = subparsers.add_parser("run", help="Run the scraper")
     run_parser.add_argument(
+        "--clean", dest="clean_data_store", action="store_true", help="Clean the data store before running the program"
+    )
+    run_parser.add_argument(
         "--data-store",
         dest="data_store_file",
         type=pathlib.Path,
@@ -104,8 +107,14 @@ def get_argument_parser() -> argparse.ArgumentParser:
 NOTIFICATION_CALLBACKS: dict[str, SendNotification] = {"pushover": pushover.send_notifications}
 
 
-async def run(data_store_file: pathlib.Path, config_file: pathlib.Path, send_notifications: bool, **kwargs):
+async def run(
+    data_store_file: pathlib.Path, config_file: pathlib.Path, send_notifications: bool, clean_data_store: bool, **kwargs
+):
     config = load_config(config_file)
+    if clean_data_store:
+        _logger.info("Remove data store at '%s'", data_store_file)
+        data_store_file.unlink(missing_ok=True)
+
     with DataStore(data_store_file) as data_store:
         tasks = list()
         for search in config.searches:
