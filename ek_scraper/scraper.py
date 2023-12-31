@@ -88,17 +88,23 @@ class DataStore(collections.UserDict[str, AdItem]):
         self.open()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         self.close()
 
-    def open(self):
+    def open(self) -> None:
         try:
             with self.path.open() as f:
+                if self.path.stat().st_size == 0:
+                    # The file is empty, nothing to decode
+                    return
                 self.data = {key: AdItem(**value) for key, value in json.load(f).items()}
+        except json.JSONDecodeError:
+            _logger.error("Error decoding non-empty file '%s'", self.path)
+            raise
         except FileNotFoundError:
             _logger.warning("Data store does not exist at '%s', will be created when closing", self.path)
 
-    def close(self):
+    def close(self) -> None:
         with self.path.open("w") as f:
             json.dump(self.data, f, cls=DataclassesJSONEncoder, indent=2)
 

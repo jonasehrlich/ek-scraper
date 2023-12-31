@@ -1,12 +1,15 @@
 import argparse
 import asyncio
+import contextlib
 import dataclasses
 import inspect
 import json
 import logging
 import pathlib
 import sys
+import tempfile
 import textwrap
+import typing as ty
 
 from ek_scraper import __version__
 from ek_scraper.notifications import SendNotification, ntfy_sh, pushover
@@ -29,6 +32,15 @@ DUMMY_SEARCH_CONFIG = SearchConfig(
 )
 
 
+NOTIFICATION_CALLBACKS: dict[str, SendNotification] = {
+    "pushover": pushover.send_notifications,
+    "ntfy.sh": ntfy_sh.send_notifications,
+}
+
+
+TEMP_DATA_STORE_SENTINEL = object()
+
+
 def configure_logging(verbose: bool) -> None:
     """Configure stream logging"""
     level = logging.DEBUG if verbose else logging.INFO
@@ -45,9 +57,8 @@ def configure_logging(verbose: bool) -> None:
     _logger.addHandler(stderr_handler)
 
 
-def add_config_file_argument(parser: argparse.ArgumentParser):
+def add_config_file_argument(parser: argparse.ArgumentParser) -> None:
     """Add the config file argument to a argument parser"""
-
     parser.add_argument(
         "config_file",
         metavar="CONFIG_FILE",
@@ -77,16 +88,23 @@ def get_argument_parser() -> argparse.ArgumentParser:
 
     subparsers = parser.add_subparsers()
     run_parser = subparsers.add_parser("run", help="Run the scraper")
-    run_parser.add_argument(
-        "--clean", dest="clean_data_store", action="store_true", help="Clean the data store before running the program"
-    )
-    run_parser.add_argument(
+
+    data_store_group = run_parser.add_mutually_exclusive_group(required=True)
+    data_store_group.add_argument(
         "--data-store",
         dest="data_store_file",
         type=pathlib.Path,
         default=pathlib.Path.home() / "ek-scraper-datastore.json",
-        help="Data store where all already seen ads are stored [default: %(default)s]",
+        help="JSON file to store previously parsed ads [default: %(default)s]",
     )
+    data_store_group.add_argument(
+        "--temp-data-store",
+        dest="data_store_file",
+        action="store_const",
+        const=TEMP_DATA_STORE_SENTINEL,
+        help="Run the program on a temporary data store",
+    )
+
     run_parser.add_argument(
         "--no-notifications",
         dest="send_notifications",
@@ -104,21 +122,35 @@ def get_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
-NOTIFICATION_CALLBACKS: dict[str, SendNotification] = {
-    "pushover": pushover.send_notifications,
-    "ntfy.sh": ntfy_sh.send_notifications,
-}
+@contextlib.contextmanager
+def get_data_store_file(data_store_file: pathlib.Path | object) -> ty.Generator[pathlib.Path, None, None]:
+    """Get the data store file to use
+
+    :param data_store_file: Path to the file to use or sentinel to use a temporary file
+    :yield: Path of the file to use as a data store
+    """
+    if data_store_file is TEMP_DATA_STORE_SENTINEL:
+        with tempfile.NamedTemporaryFile(mode="w+") as temp_file:
+            yield pathlib.Path(temp_file.name)
+    else:
+        yield data_store_file
 
 
 async def run(
-    data_store_file: pathlib.Path, config_file: pathlib.Path, send_notifications: bool, clean_data_store: bool, **kwargs
-):
-    config = load_config(config_file)
-    if clean_data_store:
-        _logger.info("Remove data store at '%s'", data_store_file)
-        data_store_file.unlink(missing_ok=True)
+    data_store_file: pathlib.Path | object,
+    config_file: pathlib.Path,
+    send_notifications: bool,
+    **kwargs,
+) -> None:
+    """Implementation of the `run` command
 
-    with DataStore(data_store_file) as data_store:
+    :param data_store_file: File to open the data store in
+    :param config_file: Path of the configuration file
+    :param send_notifications: Whether to send notifications after execution
+    """
+    config = load_config(config_file)
+
+    with get_data_store_file(data_store_file) as _data_store_file, DataStore(_data_store_file) as data_store:
         tasks = list()
         for search in config.searches:
             tasks.append(get_new_aditems(search, config.filter, data_store=data_store))
@@ -148,7 +180,11 @@ async def run(
         await notification_callback(results, notification_settings)
 
 
-def create_config(config_file: pathlib.Path, **kwargs):
+def create_config(config_file: pathlib.Path, **kwargs) -> None:
+    """Implementation of the `create-config` command
+
+    :param config_file: Path of the configuraiton file
+    """
     with config_file.open("w") as f:
         config = Config(
             notifications={
@@ -161,7 +197,7 @@ def create_config(config_file: pathlib.Path, **kwargs):
     _logger.info("Created default config file at '%s'", config_file)
 
 
-async def async_main():
+async def async_main() -> None:
     """Async main function."""
     parser = get_argument_parser()
     namespace = parser.parse_args()
@@ -183,7 +219,7 @@ async def async_main():
         parser.exit(str(exc))
 
 
-def main():
+def main() -> None:
     asyncio.run(async_main())
 
 
