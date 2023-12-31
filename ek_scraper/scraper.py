@@ -88,17 +88,23 @@ class DataStore(collections.UserDict[str, AdItem]):
         self.open()
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         self.close()
 
-    def open(self):
+    def open(self) -> None:
         try:
             with self.path.open() as f:
+                if self.path.stat().st_size == 0:
+                    # The file is empty, nothing to decode
+                    return
                 self.data = {key: AdItem(**value) for key, value in json.load(f).items()}
+        except json.JSONDecodeError:
+            _logger.error("Error decoding non-empty file '%s'", self.path)
+            raise
         except FileNotFoundError:
             _logger.warning("Data store does not exist at '%s', will be created when closing", self.path)
 
-    def close(self):
+    def close(self) -> None:
         with self.path.open("w") as f:
             json.dump(self.data, f, cls=DataclassesJSONEncoder, indent=2)
 
@@ -111,6 +117,19 @@ class Result:
     num_already_in_datastore: int = 0
     num_excluded: int = 0
     aditems: list[AdItem] = dataclasses.field(default_factory=list)
+
+    def get_url(self) -> str:
+        """Get the URL for notifications"""
+        return self.search_config.url
+
+    def get_title(self) -> str:
+        """Get title for notifications"""
+        return self.search_config.name
+
+    def get_message(self) -> str:
+        """Get the message to use in notifications"""
+        plural = "" if len(self.aditems) == 1 else "s"
+        return f"🤖 Found {len(self.aditems)} new ad{plural}"
 
 
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:

@@ -12,30 +12,20 @@ from . import NotificationError
 if ty.TYPE_CHECKING:
     from ek_scraper import Result
 
-BASE_URL = "https://api.pushover.net"
+BASE_URL = "https://ntfy.sh"
 
 _logger = logging.getLogger(__name__)
 
+PRIORITIES = ty.Literal[5, 4, 3, 2, 1]
+
 
 @dataclasses.dataclass(frozen=True)
-class PushoverConfig:
-    token: str
-    user: str
-    device: list[str] = dataclasses.field(default_factory=list)
-
-    def to_params(self) -> dict[str, str]:
-        params = dict()
-        for field in dataclasses.fields(self):
-            value = getattr(self, field.name)
-            if not value:
-                continue
-            if isinstance(value, list):
-                value = ",".join(value)
-            params[field.name] = value
-        return params
+class NtfyShConfig:
+    topic: str
+    priority: PRIORITIES = 3
 
     @classmethod
-    def to_default_dict(cls):
+    def to_default_dict(cls) -> dict:
         data = dict()
         for field in dataclasses.fields(cls):
             if field.default is not dataclasses.MISSING:
@@ -48,30 +38,30 @@ class PushoverConfig:
         return data
 
 
-async def send_notification(session: aiohttp.ClientSession, config: PushoverConfig, result: Result):
+async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig, result: Result) -> None:
     """Send a single notification
 
     :param session: ClientSession to send requests through
     :type session: aiohttp.ClientSession
-    :param config: Configuration for pushover
-    :type config: PushoverConfig
+    :param config: Configuration for ntfy.sh
+    :type config: NtfyShConfig
     :param result: Result of the scraper
     :type result: Result
     """
-    params = config.to_params()
 
+    params = dataclasses.asdict(config)
     params["title"] = result.get_title()
     params["message"] = result.get_message()
-    params["url"] = result.get_url()
+    params["click"] = result.get_url()
 
-    resp = await session.post("/1/messages.json", params=params)
+    resp = await session.post("/", json=params)
     try:
         resp.raise_for_status()
     except Exception as exc:
         raise NotificationError(f"Received error response: {exc}") from exc
 
 
-async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str, ty.Any]):
+async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str, ty.Any]) -> None:
     """Send notifications for all results from the scraper
 
     :param results: Results from the scraper
@@ -81,9 +71,9 @@ async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str
     :raises ValueError: Raised if the required configuration parameters were not provided
     """
     try:
-        config = PushoverConfig(**config_dict)
+        config = NtfyShConfig(**config_dict)
     except TypeError:
-        raise ValueError(f"Could not create PushoverConfig from {config_dict}") from None
+        raise ValueError(f"Could not create NtfyShConfig from {config_dict}") from None
 
     async with aiohttp.ClientSession(BASE_URL) as session:
         tasks = list()
