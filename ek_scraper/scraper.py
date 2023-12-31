@@ -38,6 +38,7 @@ class AdItem(pydantic.BaseModel):
     price: str
     is_top_ad: bool
     image_url: str | None = None
+    pruneable: bool = pydantic.Field(default=True, exclude=True)
 
 
 class _DataStoreData(pydantic.BaseModel):
@@ -46,19 +47,49 @@ class _DataStoreData(pydantic.BaseModel):
     def __contains__(self, key: object) -> bool:
         return key in self.ad_items
 
-    def __setitem__(self, key: str, item: AdItem) -> None:
-        self.ad_items[key] = item
+    def add(self, ad_item: AdItem) -> bool:
+        """Add an AdItem to the data store if it does not contain it yet
 
-    def __getitem__(self, key: str) -> AdItem:
-        return self.ad_items[key]
+        :param ad_item: AdItem to add to the datastore
+        :return: True if the item was added, False otherwise
+        """
+        if ad_item.id in self.ad_items:
+            _logger.debug("Ad item '%s' with ID %s already in data store", ad_item.title, ad_item.id)
+            self.ad_items[ad_item.id].pruneable = False
+            return False
+
+        ad_item.pruneable = False
+        _logger.debug("Ad item '%s' with ID '%s' added to data store", ad_item.title, ad_item.id)
+        self.ad_items[ad_item.id] = ad_item
+        return True
+
+    def prune(self) -> None:
+        """Drop all AdItems marked as pruneable from the data store"""
+        pruneable_ids: list[str] = []
+        for ad_item_id, ad_item in self.ad_items.items():
+            if ad_item.pruneable:
+                pruneable_ids.append(ad_item_id)
+
+        _logger.info("Pruning %d items from the data store", len(pruneable_ids))
+        for pruneable_id in pruneable_ids:
+            del self.ad_items[pruneable_id]
+
+    def mark_as_non_pruneable(self, ad_item: AdItem) -> None:
+        """Mark an AdItem as non-pruneable
+
+        :param ad_item: AdItem to mark as non-pruneable
+        """
+        if ad_item_ := self.ad_items.get(ad_item.id):
+            ad_item_.pruneable = False
 
 
 class DataStore:
     """Dict-like object backed by a JSON file"""
 
-    def __init__(self, path: pathlib.Path) -> None:
+    def __init__(self, path: pathlib.Path, prune_on_close: bool) -> None:
         self._path = path
         self._data = _DataStoreData()
+        self._prune_on_close = prune_on_close
 
     def __enter__(self) -> DataStore:
         self.open()
@@ -83,7 +114,14 @@ class DataStore:
             _logger.warning("Data store does not exist at '%s', will be created when closing", self._path)
 
     def close(self) -> None:
+        if self._prune_on_close:
+            self.prune()
         self._path.write_text(self._data.model_dump_json(by_alias=True, exclude_none=True))
+
+    def prune(self) -> None:
+        """Drop all AdItems marked as pruneable from the data store"""
+
+        self._data.prune()
 
     def __contains__(self, ad_item: AdItem) -> bool:
         return ad_item in self._data
@@ -94,13 +132,14 @@ class DataStore:
         :param ad_item: AdItem to add to the datastore
         :return: True if the item was added, False otherwise
         """
-        if ad_item.id in self._data:
-            _logger.debug("Ad item '%s' with ID %s already in data store", ad_item.title, ad_item.id)
-            return False
+        return self._data.add(ad_item)
 
-        _logger.debug("Ad item '%s' with ID '%s' added to data store", ad_item.title, ad_item.id)
-        self._data[ad_item.id] = ad_item
-        return True
+    def mark_as_non_pruneable(self, ad_item: AdItem) -> None:
+        """Mark an AdItem as non-pruneable
+
+        :param ad_item: AdItem to mark as non-pruneable
+        """
+        self._data.mark_as_non_pruneable(ad_item)
 
 
 @dataclasses.dataclass
@@ -184,6 +223,7 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
                 price=bs_ad_item.select('p[class*="price"]')[0].text.strip(),
                 image_url=bs_ad_item.select(".imagebox")[0].get("data-imgsrc"),
                 is_top_ad=bool(bs_ad_item.select(".icon-feature-topad")),
+                pruneable=False,
             )
         except IndexError as exc:
             raise RuntimeError(
@@ -194,6 +234,22 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
         yield ad_item
 
 
+async def get_all_ad_items(url: str, recursive: bool) -> collections.abc.AsyncGenerator[AdItem, None]:
+    """Get all AdItems for a URL
+
+    :param url: URL of the initial search page
+    :param recursive: Whether to search linked pagination pages as well
+    :yield: AdItems
+    """
+    async with aiohttp.ClientSession() as session:
+        soup_map = {url: (await get_soup(session, url))}
+        if recursive:
+            await resolve_all_pages(session, url, soup_map)
+
+        async for ad_item in achain(*[get_ad_items_from_soup(soup, url) for url, soup in soup_map.items()]):
+            yield ad_item
+
+
 async def get_new_ad_items(search_config: SearchConfig, filter_config: FilterConfig, data_store: DataStore) -> Result:
     """
     Return a result for a search configuration
@@ -201,34 +257,35 @@ async def get_new_ad_items(search_config: SearchConfig, filter_config: FilterCon
     The result will only contain all new AdItems which are not yet in the data store and not excluded by the filters
 
     :param search_config: Search configuration to get the AdItems from
-    :type search_config: SearchConfig
     :param filter_config: Filter configuration for the AdItems
-    :type filter_config: FilterConfig
     :param data_store: Data store object to check if ad_item is new
-    :type data_store: DataStore
     :return: Result for this search configuration
-    :rtype: Result
     """
     result = Result(search_config)
+    async for ad_item in get_all_ad_items(search_config.url, search_config.recursive):
+        # First: try to add the AdItem to the datastore, if it is already available continue
+        if not data_store.add(ad_item):
+            result.num_already_in_datastore += 1
+            continue
+        # Second: check if the AdItem should be excluded
+        if ad_item_is_excluded(ad_item, filter_config):
+            result.num_excluded += 1
+            continue
+        # AdItem is good, add to results
+        result.ad_items.append(ad_item)
 
-    async with aiohttp.ClientSession() as session:
-        soup_map = {search_config.url: (await get_soup(session, search_config.url))}
-        if search_config.recursive:
-            await resolve_all_pages(session, search_config.url, soup_map)
+    return result
 
-        async for ad_item in achain(*[get_ad_items_from_soup(soup, url) for url, soup in soup_map.items()]):
-            # First: try to add the AdItem to the datastore, if it is already available continue
-            if not data_store.add(ad_item):
-                result.num_already_in_datastore += 1
-                continue
-            # Second: check if the AdItem should be excluded
-            if ad_item_is_excluded(ad_item, filter_config):
-                result.num_excluded += 1
-                continue
-            # AdItem is good, add to results
-            result.ad_items.append(ad_item)
 
-        return result
+async def mark_ad_items_as_non_pruneable(search_config: SearchConfig, data_store: DataStore):
+    """
+    Mark all ads found by a search config as non-pruneable
+
+    :param search_config: Search configuration to get the AdItems from
+    :param data_store: Data store object to check if ad_item is new
+    """
+    async for ad_item in get_all_ad_items(search_config.url, search_config.recursive):
+        data_store.mark_as_non_pruneable(ad_item)
 
 
 def ad_item_is_excluded(ad_item: AdItem, filter_config: FilterConfig) -> bool:

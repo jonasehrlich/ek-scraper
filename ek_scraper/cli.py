@@ -14,7 +14,7 @@ import typing as ty
 from ek_scraper import __version__
 from ek_scraper.config import Config, NotificationsConfig, SearchConfig
 from ek_scraper.notifications import ConfiguredSendNotifications, SendNotifications, ntfy_sh, pushover
-from ek_scraper.scraper import DataStore, Result, get_new_ad_items
+from ek_scraper.scraper import DataStore, Result, get_new_ad_items, mark_ad_items_as_non_pruneable
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
 
@@ -90,7 +90,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
         dest="data_store_file",
         type=pathlib.Path,
         default=pathlib.Path.home() / "ek-scraper-datastore.json",
-        help="JSON file to store previously parsed ads [default: %(default)s]",
+        help="JSON file to store parsed ads [default: %(default)s]",
     )
     data_store_group.add_argument(
         "--temp-data-store",
@@ -107,6 +107,13 @@ def get_argument_parser() -> argparse.ArgumentParser:
         default=True,
         help="Disable the sending of notifications for this run, useful to fill up the data store",
     )
+    run_parser.add_argument(
+        "--prune",
+        dest="prune_data_store",
+        action="store_true",
+        default=False,
+        help="Prune ads not seen anymore from the datastore",
+    )
     add_config_file_argument(run_parser)
     run_parser.set_defaults(__func__=run)
 
@@ -114,6 +121,17 @@ def get_argument_parser() -> argparse.ArgumentParser:
     add_config_file_argument(create_config_parser)
     create_config_parser.set_defaults(__func__=create_config)
 
+    prune_parser = subparsers.add_parser("prune", help="Prune all non-available results from the data store")
+    add_config_file_argument(prune_parser)
+    prune_parser.add_argument(
+        "--data-store",
+        dest="data_store_file",
+        required=True,
+        type=pathlib.Path,
+        default=pathlib.Path.home() / "ek-scraper-datastore.json",
+        help="JSON file to store parsed ads [default: %(default)s]",
+    )
+    prune_parser.set_defaults(__func__=prune)
     return parser
 
 
@@ -179,6 +197,7 @@ async def run(
     data_store_file: pathlib.Path | object,
     config_file: pathlib.Path,
     send_notifications: bool,
+    prune_data_store: bool,
     **kwargs: ty.Any,
 ) -> None:
     """Implementation of the `run` command
@@ -189,7 +208,9 @@ async def run(
     """
     config = Config.model_validate_json(config_file.read_text())
 
-    with get_data_store_file(data_store_file) as _data_store_file, DataStore(_data_store_file) as data_store:
+    with get_data_store_file(data_store_file) as _data_store_file, DataStore(
+        path=_data_store_file, prune_on_close=prune_data_store
+    ) as data_store:
         tasks: list[collections.abc.Awaitable[Result]] = list()
         for search in config.searches:
             tasks.append(get_new_ad_items(search, config.filter, data_store=data_store))
@@ -219,10 +240,29 @@ async def run(
 def create_config(config_file: pathlib.Path, **kwargs: ty.Any) -> None:
     """Implementation of the `create-config` command
 
-    :param config_file: Path of the configuraiton file
+    :param config_file: Path of the configuration file
     """
     config_file.write_text(DEFAULT_CONFIG.model_dump_json(indent=2, by_alias=True, exclude_none=True))
     _logger.info("Created default config file at '%s'", config_file)
+
+
+async def prune(data_store_file: pathlib.Path | object, config_file: pathlib.Path, **kwargs: ty.Any) -> None:
+    """Implementation of the `prune` command
+
+    :param config_file: Path of the configuration file
+    :param config_file: pathlib.Path,
+
+    """
+
+    config = Config.model_validate_json(config_file.read_text())
+
+    tasks: list[collections.abc.Awaitable[ty.Any]] = []
+    with get_data_store_file(data_store_file) as _data_store_file, DataStore(
+        path=_data_store_file, prune_on_close=True
+    ) as data_store:
+        for search in config.searches:
+            tasks.append(mark_ad_items_as_non_pruneable(search, data_store))
+        await asyncio.gather(*tasks, return_exceptions=False)
 
 
 async def async_main() -> ty.NoReturn:
