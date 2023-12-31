@@ -13,8 +13,9 @@ import typing as ty
 
 from ek_scraper import __version__
 from ek_scraper.config import Config, NotificationsConfig, SearchConfig
+from ek_scraper.data_store import DataStore
 from ek_scraper.notifications import ConfiguredSendNotifications, SendNotifications, ntfy_sh, pushover
-from ek_scraper.scraper import DataStore, Result, get_new_ad_items, mark_ad_items_as_non_pruneable
+from ek_scraper.scraper import Result, get_new_ad_items, mark_ad_items_as_non_pruneable
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
 
