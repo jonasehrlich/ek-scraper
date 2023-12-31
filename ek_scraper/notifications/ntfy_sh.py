@@ -48,13 +48,11 @@ async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig
     :param result: Result of the scraper
     :type result: Result
     """
-    plural = "" if len(result.aditems) == 1 else "s"
-    message = f"Found {len(result.aditems)} new ad{plural}"
 
     params = dataclasses.asdict(config)
-    params["title"] = result.search_config.name
-    params["message"] = message
-    params["click"] = result.search_config.url
+    params["title"] = result.get_title()
+    params["message"] = result.get_message()
+    params["click"] = result.get_url()
 
     resp = await session.post("/", json=params)
     try:

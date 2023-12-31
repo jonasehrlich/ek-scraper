@@ -118,6 +118,19 @@ class Result:
     num_excluded: int = 0
     aditems: list[AdItem] = dataclasses.field(default_factory=list)
 
+    def get_url(self) -> str:
+        """Get the URL for notifications"""
+        return self.search_config.url
+
+    def get_title(self) -> str:
+        """Get title for notifications"""
+        return self.search_config.name
+
+    def get_message(self) -> str:
+        """Get the message to use in notifications"""
+        plural = "" if len(self.aditems) == 1 else "s"
+        return f"🤖 Found {len(self.aditems)} new ad{plural}"
+
 
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
     """Get the website and parse its markup using BeautifulSoup"""

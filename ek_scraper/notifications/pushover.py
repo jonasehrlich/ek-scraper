@@ -60,10 +60,9 @@ async def send_notification(session: aiohttp.ClientSession, config: PushoverConf
     """
     params = config.to_params()
 
-    plural = "" if len(result.aditems) == 1 else "s"
-    params["title"] = result.search_config.name
-    params["message"] = f"Found {len(result.aditems)} new ad{plural}"
-    params["url"] = result.search_config.url
+    params["title"] = result.get_title()
+    params["message"] = result.get_message()
+    params["url"] = result.get_url()
 
     resp = await session.post("/1/messages.json", params=params)
     try:
