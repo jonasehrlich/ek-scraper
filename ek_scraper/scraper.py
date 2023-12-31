@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import asyncio
-import collections
 import collections.abc
 import dataclasses
 import json
 import logging
 import pathlib
-import re
 import typing as ty
 from urllib.parse import urljoin
 
 import aiohttp
 import bs4
+import pydantic
+
+from .config import FilterConfig, SearchConfig
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
 
@@ -26,87 +27,80 @@ async def achain(*iterables: ty.AsyncIterable[T]) -> ty.AsyncIterator[T]:
             yield item
 
 
-class DataclassesJSONEncoder(json.JSONEncoder):
-    """JSON encoder with support for dataclasses"""
-
-    def default(self, obj):
-        if dataclasses.is_dataclass(obj):
-            return dataclasses.asdict(obj)
-        # Let the base class default method raise the TypeError
-        return json.JSONEncoder.default(self, obj)
-
-
-@dataclasses.dataclass(frozen=True)
-class AdItem:
+class AdItem(pydantic.BaseModel):
     """Definition of an Ad item"""
 
     id: str
     url: str
     title: str
     description: str
-    added: ty.Optional[str]
     location: str
     price: str
-    image_url: str
-    is_topad: bool
+    is_top_ad: bool
+    image_url: str | None = None
 
 
-@dataclasses.dataclass(frozen=True)
-class SearchConfig:
-    """Configuration of a search"""
+class _DataStoreData(pydantic.BaseModel):
+    ad_items: dict[str, AdItem] = pydantic.Field(default_factory=dict)
 
-    name: str
-    url: str
-    recursive: bool = True
+    def __contains__(self, key: object) -> bool:
+        return key in self.ad_items
 
+    def __setitem__(self, key: str, item: AdItem) -> None:
+        self.ad_items[key] = item
 
-@dataclasses.dataclass(frozen=True)
-class FilterConfig:
-    """Configuration of filters"""
-
-    exclude_topads: bool = True
-    exclude_patterns: list[str] = dataclasses.field(default_factory=list)
+    def __getitem__(self, key: str) -> AdItem:
+        return self.ad_items[key]
 
 
-@dataclasses.dataclass
-class Config:
-    """Overall configuration object"""
-
-    filter: FilterConfig = dataclasses.field(default_factory=FilterConfig)
-    notifications: dict[str, dict[str, ty.Any]] = dataclasses.field(default_factory=dict)
-    searches: list[SearchConfig] = dataclasses.field(default_factory=list)
-
-
-class DataStore(collections.UserDict[str, AdItem]):
+class DataStore:
     """Dict-like object backed by a JSON file"""
 
     def __init__(self, path: pathlib.Path) -> None:
-        self.path = path
-        super().__init__()
+        self._path = path
+        self._data = _DataStoreData()
 
     def __enter__(self) -> DataStore:
         self.open()
         return self
 
-    def __exit__(self, *args) -> None:
+    def __exit__(self, *args: ty.Any) -> None:
         self.close()
 
     def open(self) -> None:
         try:
-            with self.path.open() as f:
-                if self.path.stat().st_size == 0:
-                    # The file is empty, nothing to decode
-                    return
-                self.data = {key: AdItem(**value) for key, value in json.load(f).items()}
+            if self._path.stat().st_size == 0:
+                # The file is empty, nothing to decode
+                return
+            self._data = _DataStoreData.model_validate_json(self._path.read_text())
+        except pydantic.ValidationError:
+            _logger.error("Possibly invalid data store schema, please delete your data store and start from scratch")
+            raise
         except json.JSONDecodeError:
-            _logger.error("Error decoding non-empty file '%s'", self.path)
+            _logger.error("Error decoding non-empty file '%s'", self._path)
             raise
         except FileNotFoundError:
-            _logger.warning("Data store does not exist at '%s', will be created when closing", self.path)
+            _logger.warning("Data store does not exist at '%s', will be created when closing", self._path)
 
     def close(self) -> None:
-        with self.path.open("w") as f:
-            json.dump(self.data, f, cls=DataclassesJSONEncoder, indent=2)
+        self._path.write_text(self._data.model_dump_json(by_alias=True, exclude_none=True))
+
+    def __contains__(self, ad_item: AdItem) -> bool:
+        return ad_item in self._data
+
+    def add(self, ad_item: AdItem) -> bool:
+        """Add an AdItem to the data store if it does not contain it yet
+
+        :param ad_item: AdItem to add to the datastore
+        :return: True if the item was added, False otherwise
+        """
+        if ad_item.id in self._data:
+            _logger.debug("Ad item '%s' with ID %s already in data store", ad_item.title, ad_item.id)
+            return False
+
+        _logger.debug("Ad item '%s' with ID '%s' added to data store", ad_item.title, ad_item.id)
+        self._data[ad_item.id] = ad_item
+        return True
 
 
 @dataclasses.dataclass
@@ -116,7 +110,7 @@ class Result:
     search_config: SearchConfig
     num_already_in_datastore: int = 0
     num_excluded: int = 0
-    aditems: list[AdItem] = dataclasses.field(default_factory=list)
+    ad_items: list[AdItem] = dataclasses.field(default_factory=list)
 
     def get_url(self) -> str:
         """Get the URL for notifications"""
@@ -128,8 +122,8 @@ class Result:
 
     def get_message(self) -> str:
         """Get the message to use in notifications"""
-        plural = "" if len(self.aditems) == 1 else "s"
-        return f"🤖 Found {len(self.aditems)} new ad{plural}"
+        plural = "" if len(self.ad_items) == 1 else "s"
+        return f"🤖 Found {len(self.ad_items)} new ad{plural}"
 
 
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
@@ -142,7 +136,7 @@ async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSou
         return bs4.BeautifulSoup(content, features="lxml")
 
 
-def get_all_page_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
+def get_all_pagination_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
     """Get the URL of all anchor elements with class pagination-page
 
     :param soup: BeautifulSoup object to get the pagination URLS from
@@ -156,47 +150,40 @@ def get_all_page_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
     return [urljoin(url, href) for link_element in anchors if isinstance(href := link_element.get("href"), str)]
 
 
-async def resolve_all_pages(session: aiohttp.ClientSession, url: str, soup_map: dict[str, bs4.BeautifulSoup]) -> None:
+async def resolve_all_pages(
+    session: aiohttp.ClientSession, url: str, soup_map: collections.abc.MutableMapping[str, bs4.BeautifulSoup]
+) -> None:
     """Get URL of all anchor elements with class pagination-page"""
     _logger.info("Find pages linked on '%s'", url)
     soup = soup_map[url]
-    if soup is None:
-        soup = await get_soup(session, url)
-        soup_map[url] = soup
 
-    page_urls = get_all_page_urls(soup, url)
+    pagination_urls = get_all_pagination_urls(soup, url)
 
-    if missing_pages := set(page_urls).difference(set(soup_map)):
+    if missing_pages := set(pagination_urls).difference(set(soup_map)):
         plural = "" if len(missing_pages) == 1 else "s"
         _logger.info("Found %d new page%s on '%s'", len(missing_pages), plural, url)
 
-        async def add_to_soup_map(session: aiohttp.ClientSession, url: str):
+        async def add_to_soup_map(session: aiohttp.ClientSession, url: str) -> None:
             soup_map[url] = await get_soup(session, url)
 
         await asyncio.gather(*[add_to_soup_map(session, url_) for url_ in missing_pages])
-        await resolve_all_pages(session, page_urls[-1], soup_map)
+        await resolve_all_pages(session, pagination_urls[-1], soup_map)
 
 
-async def get_aditems_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncGenerator[AdItem, None]:
-    """Get all ad items in a list of BeatifulSoup objects"""
+async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncGenerator[AdItem, None]:
+    """Get all ad items in a list of BeautifulSoup objects"""
     _logger.debug("Find all ad items in '%s'", url)
-    for soup_aditem in soup.find_all("article", class_="aditem"):
-        calendar_icons = soup_aditem.select(".icon-calendar-open")
-        if calendar_icons:
-            added = ty.cast(str, calendar_icons[0].parent.text.strip())
-        else:
-            added = None
+    for bs_ad_item in soup.find_all("article", class_="aditem"):
         try:
-            aditem = AdItem(
-                id=soup_aditem.get("data-adid"),
-                url=urljoin(url, soup_aditem.get("data-href")),
-                title=soup_aditem.select(".text-module-begin>a")[0].text.strip(),
-                description=soup_aditem.select(".aditem-main--middle--description")[0].text.strip(),
-                location=soup_aditem.select('i[class*="icon-pin"]')[0].parent.text.strip(),
-                price=soup_aditem.select('p[class*="price"]')[0].text.strip(),
-                added=added,
-                image_url=soup_aditem.select(".imagebox")[0].get("data-imgsrc"),
-                is_topad=bool(soup_aditem.select(".icon-feature-topad")),
+            ad_item = AdItem(
+                id=bs_ad_item.get("data-adid"),
+                url=urljoin(url, bs_ad_item.get("data-href")),
+                title=bs_ad_item.select(".text-module-begin>a")[0].text.strip(),
+                description=bs_ad_item.select(".aditem-main--middle--description")[0].text.strip(),
+                location=bs_ad_item.select('i[class*="icon-pin"]')[0].parent.text.strip(),
+                price=bs_ad_item.select('p[class*="price"]')[0].text.strip(),
+                image_url=bs_ad_item.select(".imagebox")[0].get("data-imgsrc"),
+                is_top_ad=bool(bs_ad_item.select(".icon-feature-topad")),
             )
         except IndexError as exc:
             raise RuntimeError(
@@ -204,10 +191,10 @@ async def get_aditems_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncGe
                 "Please run this command again with the --verbose option and open an issue with its "
                 "output at https://github.com/jonasehrlich/ek-scraper/issues"
             ) from exc
-        yield aditem
+        yield ad_item
 
 
-async def get_new_aditems(search_config: SearchConfig, filter_config: FilterConfig, data_store: DataStore) -> Result:
+async def get_new_ad_items(search_config: SearchConfig, filter_config: FilterConfig, data_store: DataStore) -> Result:
     """
     Return a result for a search configuration
 
@@ -217,76 +204,59 @@ async def get_new_aditems(search_config: SearchConfig, filter_config: FilterConf
     :type search_config: SearchConfig
     :param filter_config: Filter configuration for the AdItems
     :type filter_config: FilterConfig
-    :param data_store: Data store object to check if aditem is new
+    :param data_store: Data store object to check if ad_item is new
     :type data_store: DataStore
     :return: Result for this search configuration
     :rtype: Result
     """
     result = Result(search_config)
-    exclude_patterns = [re.compile(pattern, re.IGNORECASE) for pattern in filter_config.exclude_patterns]
 
     async with aiohttp.ClientSession() as session:
         soup_map = {search_config.url: (await get_soup(session, search_config.url))}
         if search_config.recursive:
             await resolve_all_pages(session, search_config.url, soup_map)
 
-        async for aditem in achain(*[get_aditems_from_soup(soup, url) for url, soup in soup_map.items()]):
-            if aditem.id in data_store:
-                _logger.debug("Ad item '%s' with ID %s already in data store", aditem.title, aditem.id)
+        async for ad_item in achain(*[get_ad_items_from_soup(soup, url) for url, soup in soup_map.items()]):
+            # First: try to add the AdItem to the datastore, if it is already available continue
+            if not data_store.add(ad_item):
                 result.num_already_in_datastore += 1
                 continue
-
-            exclude_aditem = False
-
-            _logger.debug("Ad item '%s' with ID '%s' added to data store", aditem.title, aditem.id)
-            data_store[aditem.id] = aditem
-
-            if filter_config.exclude_topads and aditem.is_topad:
-                exclude_aditem = True
-
-            if not exclude_aditem:
-                for pattern in exclude_patterns:
-                    if pattern.search(aditem.title):
-                        _logger.info(
-                            "Title of ad '%s' '%s' matches exclude pattern '%s'",
-                            aditem.id,
-                            aditem.title,
-                            pattern.pattern,
-                        )
-                        exclude_aditem = True
-                        break
-
-                    if pattern.search(aditem.description):
-                        _logger.info(
-                            "Description of ad '%s' '%s' matches exclude pattern '%s'",
-                            aditem.id,
-                            aditem.description,
-                            pattern.pattern,
-                        )
-                        exclude_aditem = True
-                        break
-
-            if exclude_aditem:
+            # Second: check if the AdItem should be excluded
+            if ad_item_is_excluded(ad_item, filter_config):
                 result.num_excluded += 1
                 continue
-
-            result.aditems.append(aditem)
+            # AdItem is good, add to results
+            result.ad_items.append(ad_item)
 
         return result
 
 
-def load_config(config_file: pathlib.Path) -> Config:
-    """Load the configuration from the config path"""
-    with config_file.open() as f:
-        config_dict = json.load(f)
+def ad_item_is_excluded(ad_item: AdItem, filter_config: FilterConfig) -> bool:
+    """Return whether an AdItem should be excluded from the results, based on the filter configuration
 
-    filter_config = FilterConfig(**config_dict.get("filter", dict()))
-    searches = [SearchConfig(**s) for s in config_dict.get("searches", list())]
+    :param ad_item: AdItem to check
+    :param filter_config: Filter configuration
+    :return: Whether to exclude this item
+    """
+    if filter_config.exclude_topads and ad_item.is_top_ad:
+        return True
 
-    if not searches:
-        _logger.warning("No searches configured in '%s'", config_file)
+    for pattern in filter_config.exclude_patterns:
+        if pattern.search(ad_item.title):
+            _logger.info(
+                "Title of ad '%s' '%s' matches exclude pattern '%s'",
+                ad_item.id,
+                ad_item.title,
+                pattern.pattern,
+            )
+            return True
 
-    notifications = config_dict.get("notifications", dict())
-    if not notifications:
-        _logger.warning("No notifications configured in '%s'", config_file)
-    return Config(filter=filter_config, notifications=notifications, searches=searches)
+        if pattern.search(ad_item.description):
+            _logger.info(
+                "Description of ad '%s' '%s' matches exclude pattern '%s'",
+                ad_item.id,
+                ad_item.description,
+                pattern.pattern,
+            )
+            return True
+    return False
