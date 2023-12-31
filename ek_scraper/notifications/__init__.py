@@ -9,3 +9,7 @@ if ty.TYPE_CHECKING:
 class SendNotification(ty.Protocol):
     async def __call__(self, results: ty.Sequence[Result], config_dict: dict[str, ty.Any]):
         ...
+
+
+class NotificationError(RuntimeError):
+    """Raised for failed notification attempts"""

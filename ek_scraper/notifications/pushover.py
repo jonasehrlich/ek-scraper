@@ -7,6 +7,8 @@ import typing as ty
 
 import aiohttp
 
+from . import NotificationError
+
 if ty.TYPE_CHECKING:
     from ek_scraper import Result
 
@@ -59,11 +61,15 @@ async def send_notification(session: aiohttp.ClientSession, config: PushoverConf
     params = config.to_params()
 
     plural = "" if len(result.aditems) == 1 else "s"
-    params["message"] = f"Found {len(result.aditems)} new ad{plural} for '{result.search_config.name}'"
+    params["title"] = result.search_config.name
+    params["message"] = f"Found {len(result.aditems)} new ad{plural}"
     params["url"] = result.search_config.url
 
     resp = await session.post("/1/messages.json", params=params)
-    resp.raise_for_status()
+    try:
+        resp.raise_for_status()
+    except Exception as exc:
+        raise NotificationError(f"Received error response: {exc}") from exc
 
 
 async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str, ty.Any]):

@@ -178,6 +178,7 @@ async def run(
             continue
         _logger.info("Call notification callback for '%s'", notification_type)
         await notification_callback(results, notification_settings)
+        _logger.info("%s notification callback successful!", notification_type)
 
 
 def create_config(config_file: pathlib.Path, **kwargs) -> None:
@@ -216,7 +217,7 @@ async def async_main() -> None:
         if namespace.verbose:
             _logger.exception("Error!")
 
-        parser.exit(str(exc))
+        parser.exit(status=1, message=str(exc))
 
 
 def main() -> None:

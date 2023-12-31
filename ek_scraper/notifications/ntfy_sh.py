@@ -7,6 +7,8 @@ import typing as ty
 
 import aiohttp
 
+from . import NotificationError
+
 if ty.TYPE_CHECKING:
     from ek_scraper import Result
 
@@ -14,16 +16,16 @@ BASE_URL = "https://ntfy.sh"
 
 _logger = logging.getLogger(__name__)
 
-PRIORITIES = ty.Literal[5, 4, 3, 2, 1, "max", "urgent", "high", "default", "low", "min"]
+PRIORITIES = ty.Literal[5, 4, 3, 2, 1]
 
 
 @dataclasses.dataclass(frozen=True)
 class NtfyShConfig:
     topic: str
-    priority: PRIORITIES = "urgent"
+    priority: PRIORITIES = 3
 
     @classmethod
-    def to_default_dict(cls):
+    def to_default_dict(cls) -> dict:
         data = dict()
         for field in dataclasses.fields(cls):
             if field.default is not dataclasses.MISSING:
@@ -36,7 +38,7 @@ class NtfyShConfig:
         return data
 
 
-async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig, result: Result):
+async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig, result: Result) -> None:
     """Send a single notification
 
     :param session: ClientSession to send requests through
@@ -47,18 +49,21 @@ async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig
     :type result: Result
     """
     plural = "" if len(result.aditems) == 1 else "s"
-    message = f"Found {len(result.aditems)} new ad{plural} for '{result.search_config.name}'"
+    message = f"Found {len(result.aditems)} new ad{plural}"
 
     params = dataclasses.asdict(config)
+    params["title"] = result.search_config.name
     params["message"] = message
     params["click"] = result.search_config.url
 
-    resp = await session.post("", data=message)
-    resp.raise_for_status()
-    _logger.debug("Response %s", resp.json())
+    resp = await session.post("/", json=params)
+    try:
+        resp.raise_for_status()
+    except Exception as exc:
+        raise NotificationError(f"Received error response: {exc}") from exc
 
 
-async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str, ty.Any]):
+async def send_notifications(results: ty.Sequence[Result], config_dict: dict[str, ty.Any]) -> None:
     """Send notifications for all results from the scraper
 
     :param results: Results from the scraper
