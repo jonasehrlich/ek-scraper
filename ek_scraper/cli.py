@@ -155,14 +155,16 @@ def get_data_store_file(data_store_file: pathlib.Path | object) -> ty.Generator[
     raise ValueError(f"Invalid data store file definition {data_store_file}")
 
 
-def get_first_key_and_value(data: collections.abc.Mapping[KT, VT], *keys: KT) -> tuple[KT, VT]:
-    """Get the (key, value) tuple of the first key that matches
+def get_first_key_and_value(data: collections.abc.Mapping[KT, VT], *keys: KT | None) -> tuple[KT, VT]:
+    """Get the (key, value) tuple of the first key that matches. Ignore `None` keys.
 
     :param data: Mapping to get the data from
     :raises KeyError: Raised if none of the keys match
     :return: 2-tuple of (key, value) of the first matching key
     """
     for key in keys:
+        if key is None:
+            continue
         try:
             return key, data[key]
         except KeyError:
@@ -183,10 +185,8 @@ def get_notification_names_and_configured_callbacks(
             # No notification config is set for the notification type, continue
             continue
         try:
-            if alias := notifications_config.model_fields[notification_type].alias:
-                name, cb = get_first_key_and_value(NOTIFICATION_CALLBACKS, notification_type, alias)
-            else:
-                name, cb = get_first_key_and_value(NOTIFICATION_CALLBACKS, notification_type)
+            alias = notifications_config.model_fields[notification_type].alias
+            name, cb = get_first_key_and_value(NOTIFICATION_CALLBACKS, notification_type, alias)
         except KeyError:
             _logger.error("No notification callback registered for notification type '%s'", notification_type)
             continue
