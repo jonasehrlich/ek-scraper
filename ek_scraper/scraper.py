@@ -147,7 +147,9 @@ async def get_all_ad_items(url: str, recursive: bool) -> collections.abc.AsyncGe
             yield ad_item
 
 
-async def get_new_ad_items(search_config: SearchConfig, filter_config: FilterConfig, data_store: DataStore) -> Result:
+async def get_filtered_search_result(
+    search_config: SearchConfig, filter_config: FilterConfig, data_store: DataStore
+) -> Result:
     """
     Return a result for a search configuration
 

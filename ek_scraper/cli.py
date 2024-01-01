@@ -15,7 +15,7 @@ from ek_scraper import __version__
 from ek_scraper.config import Config, NotificationsConfig, SearchConfig
 from ek_scraper.data_store import DataStore
 from ek_scraper.notifications import ConfiguredSendNotifications, SendNotifications, ntfy_sh, pushover
-from ek_scraper.scraper import Result, get_new_ad_items, mark_ad_items_as_non_pruneable
+from ek_scraper.scraper import Result, get_filtered_search_result, mark_ad_items_as_non_pruneable
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
 
@@ -215,7 +215,7 @@ async def run(
     ) as data_store:
         tasks: list[collections.abc.Awaitable[Result]] = list()
         for search in config.searches:
-            tasks.append(get_new_ad_items(search, config.filter, data_store=data_store))
+            tasks.append(get_filtered_search_result(search, config.filter, data_store=data_store))
 
         results: list[Result] = await asyncio.gather(*tasks)
 
