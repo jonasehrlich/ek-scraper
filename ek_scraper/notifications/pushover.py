@@ -12,14 +12,14 @@ from ek_scraper.config import PushoverConfig
 from . import NotificationError
 
 if ty.TYPE_CHECKING:
-    from ek_scraper import Result
+    from ek_scraper.scraper import Result
 
 BASE_URL = "https://api.pushover.net"
 
 _logger = logging.getLogger(__name__)
 
 
-async def send_notification(session: aiohttp.ClientSession, config: PushoverConfig, result: Result):
+async def send_notification(session: aiohttp.ClientSession, config: PushoverConfig, result: Result) -> None:
     """Send a single notification
 
     :param session: ClientSession to send requests through

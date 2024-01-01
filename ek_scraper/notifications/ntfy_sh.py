@@ -12,7 +12,7 @@ from ek_scraper.config import NtfyShConfig
 from . import NotificationError
 
 if ty.TYPE_CHECKING:
-    from ek_scraper import Result
+    from ek_scraper.scraper import Result
 
 BASE_URL = "https://ntfy.sh"
 

@@ -206,6 +206,7 @@ async def run(
     :param data_store_file: File to open the data store in
     :param config_file: Path of the configuration file
     :param send_notifications: Whether to send notifications after execution
+    :param prune_data_store: Whether to prune the data store on close
     """
     config = Config.model_validate_json(config_file.read_text())
 
@@ -250,11 +251,9 @@ def create_config(config_file: pathlib.Path, **kwargs: ty.Any) -> None:
 async def prune(data_store_file: pathlib.Path | object, config_file: pathlib.Path, **kwargs: ty.Any) -> None:
     """Implementation of the `prune` command
 
+    :param data_store_file: File to open the data store in
     :param config_file: Path of the configuration file
-    :param config_file: pathlib.Path,
-
     """
-
     config = Config.model_validate_json(config_file.read_text())
 
     tasks: list[collections.abc.Awaitable[ty.Any]] = []

@@ -26,7 +26,7 @@ USER_AGENT = (
 
 
 async def achain(*iterables: ty.AsyncIterable[T]) -> ty.AsyncIterator[T]:
-    """Async chaining of iterables"""
+    """Chain async iterables"""
     for iterable in iterables:
         async for item in iterable:
             yield item
@@ -34,7 +34,7 @@ async def achain(*iterables: ty.AsyncIterable[T]) -> ty.AsyncIterator[T]:
 
 @dataclasses.dataclass
 class Result:
-    """Results of search config"""
+    """Result of a search for new ads"""
 
     search_config: SearchConfig
     num_already_in_datastore: int = 0
@@ -174,7 +174,7 @@ async def get_new_ad_items(search_config: SearchConfig, filter_config: FilterCon
     return result
 
 
-async def mark_ad_items_as_non_pruneable(search_config: SearchConfig, data_store: DataStore):
+async def mark_ad_items_as_non_pruneable(search_config: SearchConfig, data_store: DataStore) -> None:
     """
     Mark all ads found by a search config as non-pruneable
 
