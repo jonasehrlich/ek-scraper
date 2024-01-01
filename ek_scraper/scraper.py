@@ -17,6 +17,13 @@ _logger = logging.getLogger(__name__.split(".", 1)[0])
 
 T = ty.TypeVar("T")
 
+# Use the user agent of a current Google Chrome browser
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+
 
 async def achain(*iterables: ty.AsyncIterable[T]) -> ty.AsyncIterator[T]:
     """Async chaining of iterables"""
@@ -51,9 +58,8 @@ class Result:
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
     """Get the website and parse its markup using BeautifulSoup"""
     _logger.info("Getting soup for '%s'", url)
-    # Tell the website we are a Chrome browser
-    user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36"
-    async with session.get(url, headers={"User-Agent": user_agent}) as response:
+
+    async with session.get(url, headers={"User-Agent": USER_AGENT}) as response:
         content = await response.text()
         return bs4.BeautifulSoup(content, features="lxml")
 
@@ -75,8 +81,16 @@ def get_all_pagination_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
 async def resolve_all_pages(
     session: aiohttp.ClientSession, url: str, soup_map: collections.abc.MutableMapping[str, bs4.BeautifulSoup]
 ) -> None:
-    """Get URL of all anchor elements with class pagination-page"""
-    _logger.info("Find pages linked on '%s'", url)
+    """
+    Resolve all pagination links of the search query and parse their HTML.
+
+    First all pagination URLs are parser from the initial page. Afterwards they all get resolved and parsed again.
+    Any new links are then recursively passed to this function again.
+
+    :param session: aiohttp ClientSession to use
+    :param url: URL to use as the starting page
+    :param soup_map: Map, mapping URLs to parsed HTML results. Used to store all already parsed pages.
+    """
     soup = soup_map[url]
 
     pagination_urls = get_all_pagination_urls(soup, url)
