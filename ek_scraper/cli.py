@@ -45,11 +45,11 @@ def configure_logging(verbose: bool) -> None:
     _logger.setLevel(level)
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.addFilter(lambda record: record.levelno < logging.WARNING)
-    stdout_handler.setFormatter(logging.Formatter("%(message)s"))
+    stdout_handler.setFormatter(logging.Formatter("%(module)s: %(message)s"))
 
     stderr_handler = logging.StreamHandler()
     stderr_handler.setLevel(logging.WARNING)
-    stderr_handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    stderr_handler.setFormatter(logging.Formatter("%(levelname)s: %(module)s: %(message)s"))
 
     _logger.addHandler(stdout_handler)
     _logger.addHandler(stderr_handler)
