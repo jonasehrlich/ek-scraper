@@ -1,10 +1,3 @@
----
-markdownlint:
-  config:
-    MD033: false
-    allowed_elements: ["br"]
----
-
 # ek-scraper
 
 Simple scraper for kleinanzeigen.de searches with notifications for new ads.
