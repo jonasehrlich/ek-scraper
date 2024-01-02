@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 import aiohttp
 import bs4
 
+from .error import UnexpectedHTMLResponse
 from .config import FilterConfig, SearchConfig
 from .data_store import AdItem, DataStore
 
@@ -61,6 +62,9 @@ async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSou
 
     async with session.get(url, headers={"User-Agent": USER_AGENT}) as response:
         content = await response.text()
+        if not response.content_type.startswith("text/html"):
+            # We received an unexpected response
+            raise UnexpectedHTMLResponse(content)
         return bs4.BeautifulSoup(content, features="lxml")
 
 
