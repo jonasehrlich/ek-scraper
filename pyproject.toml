@@ -24,9 +24,9 @@ keywords = ["kleinanzeigen.de", "scraper"]
 [tool.poetry.dependencies]
 python = "^3.9"
 beautifulsoup4 = "^4.12.2"
-aiohttp = "^3.8.4"
 lxml = "^4.9.2"
 pydantic = "^2.5.3"
+httpx = {extras = ["http2"], version = "^0.26.0"}
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"

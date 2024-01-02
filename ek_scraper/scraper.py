@@ -7,7 +7,7 @@ import logging
 import typing as ty
 from urllib.parse import urljoin
 
-import aiohttp
+import httpx
 import bs4
 
 from .error import UnexpectedHTMLResponse
@@ -56,16 +56,20 @@ class Result:
         return f"🤖 Found {len(self.ad_items)} new ad{plural}"
 
 
-async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
+async def get_soup(client: httpx.AsyncClient, url: str) -> bs4.BeautifulSoup:
     """Get the website and parse its markup using BeautifulSoup"""
     _logger.info("Getting soup for '%s'", url)
 
-    async with session.get(url, headers={"User-Agent": USER_AGENT}) as response:
-        content = await response.text()
-        if not response.content_type.startswith("text/html"):
+    response = await client.get(url, headers={"User-Agent": USER_AGENT})
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError:
+        if not response.headers["Content-Type"].startswith("text/html"):
             # We received an unexpected response
-            raise UnexpectedHTMLResponse(content)
-        return bs4.BeautifulSoup(content, features="lxml")
+            raise UnexpectedHTMLResponse(response.text)
+        raise
+
+    return bs4.BeautifulSoup(response.text, features="lxml")
 
 
 def get_all_pagination_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
@@ -83,7 +87,7 @@ def get_all_pagination_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
 
 
 async def resolve_all_pages(
-    session: aiohttp.ClientSession, url: str, soup_map: collections.abc.MutableMapping[str, bs4.BeautifulSoup]
+    client: httpx.AsyncClient, url: str, soup_map: collections.abc.MutableMapping[str, bs4.BeautifulSoup]
 ) -> None:
     """
     Resolve all pagination links of the search query and parse their HTML.
@@ -91,7 +95,7 @@ async def resolve_all_pages(
     First all pagination URLs are parser from the initial page. Afterwards they all get resolved and parsed again.
     Any new links are then recursively passed to this function again.
 
-    :param session: aiohttp ClientSession to use
+    :param client: httpx client to use
     :param url: URL to use as the starting page
     :param soup_map: Map, mapping URLs to parsed HTML results. Used to store all already parsed pages.
     """
@@ -103,11 +107,11 @@ async def resolve_all_pages(
         plural = "" if len(missing_pages) == 1 else "s"
         _logger.info("Found %d new page%s on '%s'", len(missing_pages), plural, url)
 
-        async def add_to_soup_map(session: aiohttp.ClientSession, url: str) -> None:
-            soup_map[url] = await get_soup(session, url)
+        async def add_to_soup_map(client: httpx.AsyncClient, url: str) -> None:
+            soup_map[url] = await get_soup(client, url)
 
-        await asyncio.gather(*[add_to_soup_map(session, url_) for url_ in missing_pages])
-        await resolve_all_pages(session, pagination_urls[-1], soup_map)
+        await asyncio.gather(*[add_to_soup_map(client, url_) for url_ in missing_pages])
+        await resolve_all_pages(client, pagination_urls[-1], soup_map)
 
 
 async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncGenerator[AdItem, None]:
@@ -142,10 +146,10 @@ async def get_all_ad_items(url: str, recursive: bool) -> collections.abc.AsyncGe
     :param recursive: Whether to search linked pagination pages as well
     :yield: AdItems
     """
-    async with aiohttp.ClientSession() as session:
-        soup_map = {url: (await get_soup(session, url))}
+    async with httpx.AsyncClient(http2=True) as client:
+        soup_map = {url: (await get_soup(client, url))}
         if recursive:
-            await resolve_all_pages(session, url, soup_map)
+            await resolve_all_pages(client, url, soup_map)
 
         async for ad_item in achain(*[get_ad_items_from_soup(soup, url) for url, soup in soup_map.items()]):
             yield ad_item

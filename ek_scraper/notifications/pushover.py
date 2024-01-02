@@ -5,7 +5,7 @@ import collections.abc
 import logging
 import typing as ty
 
-import aiohttp
+import httpx
 
 from ek_scraper.config import PushoverConfig
 
@@ -19,13 +19,11 @@ BASE_URL = "https://api.pushover.net"
 _logger = logging.getLogger(__name__)
 
 
-async def send_notification(session: aiohttp.ClientSession, config: PushoverConfig, result: Result) -> None:
+async def send_notification(client: httpx.AsyncClient, config: PushoverConfig, result: Result) -> None:
     """Send a single notification
 
-    :param session: ClientSession to send requests through
-    :type session: aiohttp.ClientSession
+    :param client: Client used to send requests
     :param config: Configuration for pushover
-    :type config: PushoverConfig
     :param result: Result of the scraper
     :type result: Result
     """
@@ -36,7 +34,7 @@ async def send_notification(session: aiohttp.ClientSession, config: PushoverConf
     params["url"] = result.get_url()
 
     _logger.info("Send Pushover notification for '%s'", result.get_title())
-    resp = await session.post("/1/messages.json", params=params)
+    resp = await client.post("/1/messages.json", params=params)
     try:
         resp.raise_for_status()
     except Exception as exc:
@@ -51,11 +49,11 @@ async def send_notifications(results: ty.Sequence[Result], config: PushoverConfi
     :raises ValueError: Raised if the required configuration parameters were not provided
     """
 
-    async with aiohttp.ClientSession(BASE_URL) as session:
+    async with httpx.AsyncClient(base_url=BASE_URL) as client:
         tasks: list[collections.abc.Awaitable[ty.Any]] = list()
         for result in results:
             if not result.ad_items:
                 continue
-            tasks.append(send_notification(session, config=config, result=result))
+            tasks.append(send_notification(client, config=config, result=result))
 
         await asyncio.gather(*tasks)

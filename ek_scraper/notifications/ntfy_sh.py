@@ -5,7 +5,7 @@ import collections.abc
 import logging
 import typing as ty
 
-import aiohttp
+import httpx
 
 from ek_scraper.config import NtfyShConfig
 
@@ -19,15 +19,12 @@ BASE_URL = "https://ntfy.sh"
 _logger = logging.getLogger(__name__)
 
 
-async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig, result: Result) -> None:
+async def send_notification(client: httpx.AsyncClient, config: NtfyShConfig, result: Result) -> None:
     """Send a single notification
 
-    :param session: ClientSession to send requests through
-    :type session: aiohttp.ClientSession
+    :param client: AsyncClient used to send requests
     :param config: Configuration for ntfy.sh
-    :type config: NtfyShConfig
     :param result: Result of the scraper
-    :type result: Result
     """
 
     params = config.model_dump()
@@ -36,7 +33,7 @@ async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig
     params["click"] = result.get_url()
 
     _logger.info("Send ntfy.sh notification for '%s'", result.get_title())
-    resp = await session.post("/", json=params)
+    resp = await client.post("/", json=params)
     try:
         resp.raise_for_status()
     except Exception as exc:
@@ -47,16 +44,15 @@ async def send_notifications(results: ty.Sequence[Result], config: NtfyShConfig)
     """Send notifications for all results from the scraper
 
     :param results: Results from the scraper
-    :type results: ty.Sequence[Result]
     :param config: Configuration for ntfy.sh notifications
     :raises ValueError: Raised if the required configuration parameters were not provided
     """
 
-    async with aiohttp.ClientSession(BASE_URL) as session:
+    async with httpx.AsyncClient(base_url=BASE_URL) as client:
         tasks: list[collections.abc.Awaitable[ty.Any]] = list()
         for result in results:
             if not result.ad_items:
                 continue
-            tasks.append(send_notification(session, config=config, result=result))
+            tasks.append(send_notification(client, config=config, result=result))
 
         await asyncio.gather(*tasks)
