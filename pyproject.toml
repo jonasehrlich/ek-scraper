@@ -25,7 +25,7 @@ keywords = ["kleinanzeigen.de", "scraper"]
 python = "^3.9"
 beautifulsoup4 = "^4.12.2"
 aiohttp = "^3.8.4"
-lxml = ">=4.9.2,<6.0.0"
+lxml = "^4.9.2"
 pydantic = "^2.5.3"
 
 [tool.poetry.group.dev.dependencies]
