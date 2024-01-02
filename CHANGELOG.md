@@ -1,6 +1,13 @@
 <!-- markdownlint-disable MD024 -->
 # Changelog
 
+## v0.2.2
+
+### Changed
+
+* Raise specific error when we receive a non-`text/html` response. This can indicate an error or a block of the IP
+  address
+
 ## v0.2.1
 
 ### Changed

@@ -14,6 +14,7 @@ import typing as ty
 from ek_scraper import __version__
 from ek_scraper.config import Config, NotificationsConfig, SearchConfig
 from ek_scraper.data_store import DataStore
+from ek_scraper.error import UnexpectedHTMLResponse
 from ek_scraper.notifications import ConfiguredSendNotifications, SendNotifications, ntfy_sh, pushover
 from ek_scraper.scraper import Result, get_filtered_search_result, mark_ad_items_as_non_pruneable
 
@@ -280,6 +281,13 @@ async def async_main() -> ty.NoReturn:
         ret = func(**vars(namespace))
         if inspect.isawaitable(ret):
             await ret
+    except UnexpectedHTMLResponse as exc:
+        parser.exit(
+            status=1,
+            message=(
+                f"An unexpected response was received from kleinanzeigen.de. Maybe your IP address was blocked\n{exc}"
+            ),
+        )
     except Exception as exc:
         if namespace.verbose:
             _logger.exception("Error!")
