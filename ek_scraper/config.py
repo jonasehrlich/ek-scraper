@@ -1,9 +1,27 @@
+from __future__ import annotations
+
+import pathlib
 import re
 import typing as ty
-
+import enum
 import pydantic
+import yaml
 
 NTFY_SH_PRIORITIES = ty.Literal[5, 4, 3, 2, 1]
+
+
+class ConfigFileFormat(enum.StrEnum):
+    """Format of the configuration file"""
+
+    YAML = enum.auto()
+    JSON = enum.auto()
+
+    @classmethod
+    def from_path(cls, path: pathlib.Path) -> ConfigFileFormat:
+        try:
+            return ConfigFileFormat(path.suffix[1:])
+        except ValueError:
+            raise ValueError(f"asdInvalid configuration file format: {format}")
 
 
 class SearchConfig(pydantic.BaseModel):
@@ -76,3 +94,39 @@ class Config(pydantic.BaseModel):
     filter: FilterConfig = pydantic.Field(default_factory=FilterConfig)
     notifications: NotificationsConfig = pydantic.Field(default_factory=NotificationsConfig)
     searches: list[SearchConfig] = pydantic.Field(default_factory=list)
+
+    @classmethod
+    def from_file(cls, path: pathlib.Path) -> ty.Self:
+        """
+        Create a config object from a path
+
+        :param path: Path to read the config from
+        :return: Validated config object
+        """
+        format = ConfigFileFormat.from_path(path)
+        if format == ConfigFileFormat.JSON:
+            return cls.model_validate_json(path.read_bytes())
+        elif format == ConfigFileFormat.YAML:
+            with path.open() as f:
+                data = yaml.safe_load(f)
+                return cls(**data)
+        else:
+            raise ValueError(f"Invalid configuration file format: {format}")
+
+    def to_file(self, path: pathlib.Path) -> None:
+        """
+        Dump the configuration to a file
+
+        :param path: Path to write the config file to
+        :param format: Format of the configuration file, defaults to ConfigFileFormat.YAML
+        :raises ValueError: Raised for invalid file format
+        """
+        format = ConfigFileFormat.from_path(path)
+        if format == ConfigFileFormat.JSON:
+            path.write_text(self.model_dump_json(indent=2, by_alias=True, exclude_none=True))
+        elif format == ConfigFileFormat.YAML:
+            data = self.model_dump()
+            with path.open("w") as f:
+                yaml.safe_dump(data, f)
+        else:
+            raise ValueError(f"Invalid configuration file format: {format}")

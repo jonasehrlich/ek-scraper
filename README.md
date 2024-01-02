@@ -17,36 +17,26 @@ pipx install ek-scraper
 Create a configuration file using
 
 ``` sh
-ek-scraper create-config <path/to/config.json>
+ek-scraper create-config <path/to/config.yaml>
 ```
 
 The example configuration file will look like this:
 
-```json
-{
-  "filter": {
-    "exclude_topads": true,
-    "exclude_patterns": []
-  },
-  "notifications": {
-    "pushover": {
-        "token": "<your-app-api-token>",
-        "user": "<your-user-api-token>",
-        "device": []
-    },
-    "ntfy.sh": {
-      "topic": "<your-private-topic>",
-      "priority": 3
-    },
-  },
-  "searches": [
-    {
-      "name": "Wohnungen in Hamburg Altona",
-      "url": "https://www.kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497",
-      "recursive": true
-    }
-  ]
-}
+``` yaml
+filter:
+  exclude_patterns: []
+  exclude_topads: true
+notifications:
+  ntfy_sh:
+    topic: "<your-private-topic>"
+    priority: 3
+  pushover:
+    token: "<your-app-api-token>"
+    user: "<your-user-api-token>"
+searches:
+- name: Wohnungen in Hamburg Altona
+  recursive: true
+  url: https://www.kleinanzeigen.de/s-wohnung-mieten/altona/c203l9497
 ```
 
 See [Configuration](#configuration) for details on all configuration options.
@@ -61,13 +51,13 @@ See [Configuration](#configuration) for details on all configuration options.
 Run the following command to initialize the data store without sending any notifications:
 
 ``` sh
-ek-scraper run --no-notifications path/to/config.json
+ek-scraper run --no-notifications path/to/config.yaml
 ```
 
 Afterwards, run
 
 ```sh
-ek-scraper run path/to/config.json
+ek-scraper run path/to/config.yaml
 ```
 
 to receive notifications according to your `notifications` configuration.
@@ -111,6 +101,9 @@ Follow the steps below to set up a development environment for this project.
    ```
 
 ## Configuration
+
+> Both, YAML and JSON files are supported for configuration, although it is recommended to use YAML
+> as it supports comments.
 
 ### Searches
 

@@ -10,9 +10,8 @@ import sys
 import tempfile
 import textwrap
 import typing as ty
-
 from ek_scraper import __version__
-from ek_scraper.config import Config, NotificationsConfig, SearchConfig
+from ek_scraper.config import Config, NotificationsConfig, SearchConfig, ConfigFileFormat
 from ek_scraper.data_store import DataStore
 from ek_scraper.notifications import ConfiguredSendNotifications, SendNotifications, ntfy_sh, pushover
 from ek_scraper.scraper import Result, get_filtered_search_result, mark_ad_items_as_non_pruneable
@@ -61,7 +60,10 @@ def add_config_file_argument(parser: argparse.ArgumentParser) -> None:
         "config_file",
         metavar="CONFIG_FILE",
         type=pathlib.Path,
-        help="Configuration file for the scraper",
+        help=(
+            f"Configuration file for the scraper, supported formats: "
+            f"{', '.join(item.value.upper() for item in ConfigFileFormat)}"
+        ),
     )
 
 
@@ -208,7 +210,7 @@ async def run(
     :param send_notifications: Whether to send notifications after execution
     :param prune_data_store: Whether to prune the data store on close
     """
-    config = Config.model_validate_json(config_file.read_text())
+    config = Config.from_file(config_file)
 
     with get_data_store_file(data_store_file) as _data_store_file, DataStore(
         path=_data_store_file, prune_on_close=prune_data_store
@@ -244,7 +246,7 @@ def create_config(config_file: pathlib.Path, **kwargs: ty.Any) -> None:
 
     :param config_file: Path of the configuration file
     """
-    config_file.write_text(DEFAULT_CONFIG.model_dump_json(indent=2, by_alias=True, exclude_none=True))
+    DEFAULT_CONFIG.to_file(config_file)
     _logger.info("Created default config file at '%s'", config_file)
 
 
@@ -254,7 +256,7 @@ async def prune(data_store_file: pathlib.Path | object, config_file: pathlib.Pat
     :param data_store_file: File to open the data store in
     :param config_file: Path of the configuration file
     """
-    config = Config.model_validate_json(config_file.read_text())
+    config = Config.from_file(config_file)
 
     tasks: list[collections.abc.Awaitable[ty.Any]] = []
     with get_data_store_file(data_store_file) as _data_store_file, DataStore(
