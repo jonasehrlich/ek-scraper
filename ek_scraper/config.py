@@ -20,19 +20,6 @@ class FilterConfig(pydantic.BaseModel):
     exclude_topads: bool = True
     exclude_patterns: list[re.Pattern[str]] = pydantic.Field(default_factory=list)
 
-    @pydantic.field_validator("exclude_patterns")
-    @classmethod
-    def validate_exclude_patterns(
-        cls, exclude_patterns: list[str], _info: pydantic.ValidationInfo
-    ) -> list[re.Pattern[str]]:
-        """Validate the exclude patterns by compiling them
-
-        :param exclude_patterns: List of exclude patterns as strings
-        :param _info: Validation info object
-        :return: List of compiled patterns
-        """
-        return [re.compile(pattern, re.IGNORECASE) for pattern in exclude_patterns]
-
     @pydantic.field_serializer("exclude_patterns")
     def serialize_exclude_patterns(
         self, exclude_patterns: list[re.Pattern[str]], _info: pydantic.FieldSerializationInfo
