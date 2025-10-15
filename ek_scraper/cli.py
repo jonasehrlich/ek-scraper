@@ -75,8 +75,7 @@ def get_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ek-scraper",
         description=(
-            f"Scraper for kleinanzeigen.de search results.\n\n"
-            f"Example configuration file:\n\n{example_config_file_text}"
+            f"Scraper for kleinanzeigen.de search results.\n\nExample configuration file:\n\n{example_config_file_text}"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -211,9 +210,10 @@ async def run(
     """
     config = Config.model_validate_json(config_file.read_text())
 
-    with get_data_store_file(data_store_file) as _data_store_file, DataStore(
-        path=_data_store_file, prune_on_close=prune_data_store
-    ) as data_store:
+    with (
+        get_data_store_file(data_store_file) as _data_store_file,
+        DataStore(path=_data_store_file, prune_on_close=prune_data_store) as data_store,
+    ):
         tasks: list[collections.abc.Awaitable[Result]] = list()
         for search in config.searches:
             tasks.append(get_filtered_search_result(search, config.filter, data_store=data_store))
@@ -258,9 +258,10 @@ async def prune(data_store_file: pathlib.Path | object, config_file: pathlib.Pat
     config = Config.model_validate_json(config_file.read_text())
 
     tasks: list[collections.abc.Awaitable[ty.Any]] = []
-    with get_data_store_file(data_store_file) as _data_store_file, DataStore(
-        path=_data_store_file, prune_on_close=True
-    ) as data_store:
+    with (
+        get_data_store_file(data_store_file) as _data_store_file,
+        DataStore(path=_data_store_file, prune_on_close=True) as data_store,
+    ):
         for search in config.searches:
             tasks.append(mark_ad_items_as_non_pruneable(search, data_store))
         await asyncio.gather(*tasks, return_exceptions=False)

@@ -10,9 +10,9 @@ from urllib.parse import urljoin
 import aiohttp
 import bs4
 
-from .error import UnexpectedHTMLResponse
 from .config import FilterConfig, SearchConfig
 from .data_store import AdItem, DataStore
+from .error import UnexpectedHTMLResponse
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
 

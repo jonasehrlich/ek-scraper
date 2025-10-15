@@ -34,13 +34,13 @@ class FilterConfig(pydantic.BaseModel):
 
 
 class NtfyShConfig(pydantic.BaseModel):
-    topic: str = "<my-topic>"
+    topic: str
     priority: NTFY_SH_PRIORITIES = 3
 
 
 class PushoverConfig(pydantic.BaseModel):
-    token: str = "<my-token>"
-    user: str = "<my-user>"
+    token: str
+    user: str
     device: list[str] = pydantic.Field(default_factory=list)
 
     def model_dump_api(self) -> dict[str, ty.Any]:
