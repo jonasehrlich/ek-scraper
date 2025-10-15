@@ -4,10 +4,10 @@ Simple scraper for kleinanzeigen.de searches with notifications for new ads.
 
 ## Installation
 
-Install this package from PyPi in a separate virtual environment using [`pipx`](https://github.com/pypa/pipx).
+Install this package from PyPi in a separate virtual environment using [`uv`](https://docs.astral.sh/uv/).
 
 ``` sh
-pipx install ek-scraper
+uv tool install ek-scraper
 ```
 
 ## Usage
