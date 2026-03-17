@@ -53,7 +53,20 @@ class Result:
     def get_message(self) -> str:
         """Get the message to use in notifications"""
         plural = "" if len(self.ad_items) == 1 else "s"
-        return f"🤖 Found {len(self.ad_items)} new ad{plural}"
+        lines = [f"Found {len(self.ad_items)} new ad{plural}:\n"]
+        for ad in self.ad_items:
+            parts = [f"- {ad.title} | {ad.price}"]
+            details = []
+            if ad.mileage:
+                details.append(ad.mileage)
+            if ad.registration:
+                details.append(ad.registration)
+            if ad.location:
+                details.append(ad.location)
+            if details:
+                parts.append(f"  {' | '.join(details)}")
+            lines.append("\n".join(parts))
+        return "\n".join(lines)
 
 
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
@@ -134,6 +147,20 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
             # FIX: Image source is often in 'src' of the img tag within imagebox
             img_element = bs_ad_item.select_one(".imagebox img")
             
+            # Extract date from top-right section
+            date_element = bs_ad_item.select_one(".aditem-main--top--right")
+            ad_date = date_element.text.strip() if date_element else None
+
+            # Extract tags (mileage, registration, etc.) from bottom section
+            tags = [tag.text.strip() for tag in bs_ad_item.select(".aditem-main--bottom .simpletag")]
+            ad_mileage = None
+            ad_registration = None
+            for tag in tags:
+                if "km" in tag.lower() and "km" in tag:
+                    ad_mileage = tag
+                elif tag.startswith("EZ"):
+                    ad_registration = tag
+
             ad_item = AdItem(
                 id=bs_ad_item.get("data-adid"),
                 # Using the href from the title link as it's the most reliable source
@@ -144,6 +171,9 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
                 price=price_element.text.strip() if hasattr(price_element, 'text') else price_element[0].text.strip(),
                 image_url=img_element.get("src") if img_element else None,
                 is_top_ad=bool(bs_ad_item.select(".icon-feature-topad")),
+                date=ad_date,
+                mileage=ad_mileage,
+                registration=ad_registration,
                 pruneable=False,
             )
         except (IndexError, AttributeError) as exc:
