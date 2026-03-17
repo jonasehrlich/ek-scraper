@@ -128,23 +128,14 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
     _logger.debug("Find all ad items in '%s'", url)
     for bs_ad_item in soup.find_all("article", class_="aditem"):
         try:
-            # FIX: Use select_one to avoid IndexError and support multiple selector fallbacks
-            # The original ".text-module-begin>a" failed due to HTML structure changes
-            title_element = bs_ad_item.select_one(".text-module-begin a.ellipsis") or \
-                            bs_ad_item.select_one(".aditem-main--middle h2 a")
+            title_element = bs_ad_item.select_one(".text-module-begin a.ellipsis")
             
             if not title_element:
                 _logger.warning("Could not find title element for ad, skipping...")
                 continue
 
-            # FIX: Price selector updated to match the more specific class in your HTML
-            price_element = bs_ad_item.select_one(".aditem-main--middle--price-shipping--price") or \
-                            bs_ad_item.select('p[class*="price"]')[0]
-
-            # FIX: Location often fails if the icon class changes, using a more generic approach
+            price_element = bs_ad_item.select_one(".aditem-main--middle--price-shipping--price")
             location_element = bs_ad_item.select_one(".aditem-main--top--left")
-
-            # FIX: Image source is often in 'src' of the img tag within imagebox
             img_element = bs_ad_item.select_one(".imagebox img")
             
             # Extract date from top-right section
@@ -168,7 +159,7 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
                 title=title_element.text.strip(),
                 description=bs_ad_item.select(".aditem-main--middle--description")[0].text.strip(),
                 location=location_element.text.strip() if location_element else "Unknown",
-                price=price_element.text.strip() if hasattr(price_element, 'text') else price_element[0].text.strip(),
+                price=price_element.text.strip(),
                 image_url=img_element.get("src") if img_element else None,
                 is_top_ad=bool(bs_ad_item.select(".icon-feature-topad")),
                 date=ad_date,
