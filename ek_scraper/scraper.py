@@ -53,7 +53,20 @@ class Result:
     def get_message(self) -> str:
         """Get the message to use in notifications"""
         plural = "" if len(self.ad_items) == 1 else "s"
-        return f"🤖 Found {len(self.ad_items)} new ad{plural}"
+        lines = [f"Found {len(self.ad_items)} new ad{plural}:\n"]
+        for ad in self.ad_items:
+            parts = [f"- {ad.title} | {ad.price}"]
+            details = []
+            if ad.mileage:
+                details.append(ad.mileage)
+            if ad.registration:
+                details.append(ad.registration)
+            if ad.location:
+                details.append(ad.location)
+            if details:
+                parts.append(f"  {' | '.join(details)}")
+            lines.append("\n".join(parts))
+        return "\n".join(lines)
 
 
 async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSoup:
@@ -115,18 +128,47 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
     _logger.debug("Find all ad items in '%s'", url)
     for bs_ad_item in soup.find_all("article", class_="aditem"):
         try:
+            title_element = bs_ad_item.select_one(".text-module-begin a.ellipsis")
+            
+            if not title_element:
+                _logger.warning("Could not find title element for ad, skipping...")
+                continue
+
+            price_element = bs_ad_item.select_one(".aditem-main--middle--price-shipping--price")
+            location_element = bs_ad_item.select_one(".aditem-main--top--left")
+            img_element = bs_ad_item.select_one(".imagebox img")
+            
+            # Extract date from top-right section
+            date_element = bs_ad_item.select_one(".aditem-main--top--right")
+            ad_date = date_element.text.strip() if date_element else None
+
+            # Extract tags (mileage, registration, etc.) from bottom section
+            tags = [tag.text.strip() for tag in bs_ad_item.select(".aditem-main--bottom .simpletag")]
+            ad_mileage = None
+            ad_registration = None
+            for tag in tags:
+                if "km" in tag.lower() and "km" in tag:
+                    ad_mileage = tag
+                elif tag.startswith("EZ"):
+                    ad_registration = tag
+
             ad_item = AdItem(
                 id=bs_ad_item.get("data-adid"),
-                url=urljoin(url, bs_ad_item.get("data-href")),
-                title=bs_ad_item.select(".text-module-begin>a")[0].text.strip(),
+                # Using the href from the title link as it's the most reliable source
+                url=urljoin(url, title_element.get("href")),
+                title=title_element.text.strip(),
                 description=bs_ad_item.select(".aditem-main--middle--description")[0].text.strip(),
-                location=bs_ad_item.select('i[class*="icon-pin"]')[0].parent.text.strip(),
-                price=bs_ad_item.select('p[class*="price"]')[0].text.strip(),
-                image_url=bs_ad_item.select(".imagebox")[0].get("data-imgsrc"),
+                location=location_element.text.strip() if location_element else "Unknown",
+                price=price_element.text.strip(),
+                image_url=img_element.get("src") if img_element else None,
                 is_top_ad=bool(bs_ad_item.select(".icon-feature-topad")),
+                date=ad_date,
+                mileage=ad_mileage,
+                registration=ad_registration,
                 pruneable=False,
             )
-        except IndexError as exc:
+        except (IndexError, AttributeError) as exc:
+            # We keep the RuntimeError to stay compatible with the original error handling
             raise RuntimeError(
                 "Error parsing ads, this is probably caused by changes on kleinanzeigen.de\n\n"
                 "Please run this command again with the --verbose option and open an issue with its "
