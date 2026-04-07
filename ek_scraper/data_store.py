@@ -22,6 +22,9 @@ class AdItem(pydantic.BaseModel):
     price: str
     is_top_ad: bool
     image_url: str | None = None
+    date: str | None = None
+    mileage: str | None = None
+    registration: str | None = None
     pruneable: bool = pydantic.Field(default=True, exclude=True)
 
 

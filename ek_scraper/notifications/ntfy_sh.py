@@ -8,6 +8,7 @@ import typing as ty
 import aiohttp
 
 from ek_scraper.config import NtfyShConfig
+from ek_scraper.data_store import AdItem
 
 from . import NotificationError
 
@@ -19,23 +20,25 @@ BASE_URL = "https://ntfy.sh"
 _logger = logging.getLogger(__name__)
 
 
-async def send_notification(session: aiohttp.ClientSession, config: NtfyShConfig, result: Result) -> None:
-    """Send a single notification
-
-    :param session: ClientSession to send requests through
-    :type session: aiohttp.ClientSession
-    :param config: Configuration for ntfy.sh
-    :type config: NtfyShConfig
-    :param result: Result of the scraper
-    :type result: Result
-    """
-
+async def send_ad_notification(
+    session: aiohttp.ClientSession, config: NtfyShConfig, search_name: str, ad: AdItem
+) -> None:
+    """Send a notification for a single ad item"""
     params = config.model_dump()
-    params["title"] = result.get_title()
-    params["message"] = result.get_message()
-    params["click"] = result.get_url()
+    params["title"] = f"{search_name}: {ad.price}"
 
-    _logger.info("Send ntfy.sh notification for '%s'", result.get_title())
+    details = []
+    if ad.mileage:
+        details.append(ad.mileage)
+    if ad.registration:
+        details.append(ad.registration)
+    if ad.location:
+        details.append(ad.location)
+
+    params["message"] = f"{ad.title}\n{' | '.join(details)}" if details else ad.title
+    params["click"] = ad.url
+
+    _logger.info("Send ntfy.sh notification for ad '%s'", ad.title)
     resp = await session.post("/", json=params)
     try:
         resp.raise_for_status()
@@ -55,8 +58,7 @@ async def send_notifications(results: ty.Sequence[Result], config: NtfyShConfig)
     async with aiohttp.ClientSession(BASE_URL) as session:
         tasks: list[collections.abc.Awaitable[ty.Any]] = list()
         for result in results:
-            if not result.ad_items:
-                continue
-            tasks.append(send_notification(session, config=config, result=result))
+            for ad in result.ad_items:
+                tasks.append(send_ad_notification(session, config=config, search_name=result.get_title(), ad=ad))
 
         await asyncio.gather(*tasks)
