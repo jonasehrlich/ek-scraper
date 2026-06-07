@@ -27,7 +27,7 @@ def _send_email(config: EmailConfig, result: Result) -> None:
     try:
         msg = MIMEMultipart()
         msg["From"] = config.sender
-        msg["To"] = ", ".join(config.recipients)
+        msg["To"] = ", ".join(config.recipient)
         msg["Subject"] = f"Scraper result: {result.get_title()}"
 
         body = f"""
@@ -35,13 +35,27 @@ def _send_email(config: EmailConfig, result: Result) -> None:
         Message: {result.get_message()}
         URL: {result.get_url()}
         """
-        msg.attach(MIMEText(body, "plain"))
+
+        body_lines = []
+        for ad in result.ad_items:   # <-- iterate over ad_items
+            body_lines.append(
+            f"Title: {ad.title}\n"
+            f"Price: {ad.price}\n"
+            f"Location: {ad.location}\n"
+            f"Link: {ad.url}\n"
+            f"Description: {ad.description}\n"
+        )
+
+        email_body = "\n\n".join(body_lines)
+
+        msg.attach(MIMEText(email_body, "plain"))
 
         with smtplib.SMTP(config.smtp_host, config.smtp_port) as server:
-            if config.use_tls:
-                server.starttls()
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
             server.login(config.username, config.password)
-            server.sendmail(config.sender, config.recipients, msg.as_string())
+            server.sendmail(config.sender, config.recipient, msg.as_string())
 
         _logger.info("Sent email notification for '%s'", result.get_title())
     except Exception as exc:
