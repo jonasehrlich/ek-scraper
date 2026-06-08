@@ -55,7 +55,8 @@ class EmailConfig(pydantic.BaseModel):
     username: str
     password: str
     sender: str
-    recipient: str
+    recipient: list[str]
+    bcc: list[str]
 
 
 class NotificationsConfig(pydantic.BaseModel):

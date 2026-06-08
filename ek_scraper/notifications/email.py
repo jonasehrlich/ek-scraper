@@ -27,17 +27,16 @@ def _send_email(config: EmailConfig, result: Result) -> None:
     try:
         msg = MIMEMultipart()
         msg["From"] = config.sender
-        msg["To"] = ", ".join(config.recipient)
+        msg["To"] = ", ".join(config.recipient) if config.recipient else "Undisclosed recipients"
         msg["Subject"] = f"Scraper result: {result.get_title()}"
 
         body = f"""
-        Title: {result.get_title()}
-        Message: {result.get_message()}
+        {result.get_title()}{result.get_message()}
         URL: {result.get_url()}
         """
 
         body_lines = []
-        for ad in result.ad_items:   # <-- iterate over ad_items
+        for ad in result.ad_items:
             body_lines.append(
             f"Title: {ad.title}\n"
             f"Price: {ad.price}\n"
@@ -46,16 +45,20 @@ def _send_email(config: EmailConfig, result: Result) -> None:
             f"Description: {ad.description}\n"
         )
 
-        email_body = "\n\n".join(body_lines)
+        ads_section = "\n\n".join(body_lines)
+        email_body = body + "\n\n" + ads_section
 
         msg.attach(MIMEText(email_body, "plain"))
+
+        all_recipients = config.recipient + config.bcc
 
         with smtplib.SMTP(config.smtp_host, config.smtp_port) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
             server.login(config.username, config.password)
-            server.sendmail(config.sender, config.recipient, msg.as_string())
+            if all_recipients:
+                server.sendmail(config.sender, all_recipients, msg.as_string())
 
         _logger.info("Sent email notification for '%s'", result.get_title())
     except Exception as exc:
@@ -63,7 +66,6 @@ def _send_email(config: EmailConfig, result: Result) -> None:
 
 
 async def send_notifications(results: ty.Sequence[Result], config: EmailConfig) -> None:
-    """Send email notifications for all results."""
     tasks: list[ty.Awaitable[ty.Any]] = []
     for result in results:
         if not result.ad_items:
