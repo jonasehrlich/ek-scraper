@@ -44,7 +44,8 @@ The example configuration file will look like this:
       "username": "<your-account-username>",
       "password": "<your-account-password>",
       "sender": "<sender@example.com>",
-      "recipient": "<receiver@other.example.com>"
+      "recipient": ["<receiver@other.example.com>","<receiver@another.example.com>"],
+      "bcc": ["<blindreceiver@third.example.com>","<blindreceiver@fourth.example.com>"]
     },
   },
   "searches": [
