@@ -38,6 +38,15 @@ The example configuration file will look like this:
       "topic": "<your-private-topic>",
       "priority": 3
     },
+    "email": {
+      "smtp_host": "<smtp.example.com>",
+      "smtp_port": "587",
+      "username": "<your-account-username>",
+      "password": "<your-account-password>",
+      "sender": "<sender@example.com>",
+      "recipient": ["<receiver@other.example.com>","<receiver@another.example.com>"],
+      "bcc": ["<blindreceiver@third.example.com>","<blindreceiver@fourth.example.com>"]
+    },
   },
   "searches": [
     {
@@ -185,6 +194,28 @@ configuration file and add the topic you previously subscribed to.
 | ---------- | ----------------------------------------------------------------- |
 | `topic`    | Topic to publish the notifications to                             |
 | `priority` | Priority to send the notifications with (optional, defaults to 3) |
+
+#### Push notifications using E-Mail
+
+`ek-scraper` supports push notifications to your devices using E-Mail.
+
+The implementation for _E-Mail_ notifications will send a single Email containing the new results per 
+search, if new ads are discovered.
+
+To configure _E-Mail_ for notifications from the scraper, you need to add your smtp server details and 
+credentials. To use the service in `ek-scraper`, add the `email` object to the `notifications` object in 
+your configuration file. Currently only supporting STARTTLS.
+
+| Name         | Description |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| `smtp_host`  | SMTP host address (required) |
+| `smtp_port`  | SMTP host port (default: 587) (required) |
+| `username`   | Email account username (required) |
+| `password`   | Email account password (required) |
+| `sender`     | Outbound email address (required) |
+| `recipient`  | Recipients who receive the email (optional) |
+| `bcc`        | Recipients who the results get sent to as bcc (optional) |
+
 
 ## Running `ek-scraper` regularly
 
