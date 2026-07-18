@@ -41,6 +41,7 @@ dev = [
     "isort>=5.12,<9.0",
     "ruff>=0.13.0,<0.15.22",
     "mypy>=1.8.0,<3",
+    "ty>=0.0.61",
 ]
 
 [tool.hatch.build.targets.sdist]
