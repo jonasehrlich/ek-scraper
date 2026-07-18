@@ -88,27 +88,14 @@ Follow the steps below to set up a development environment for this project.
    cd ek-scraper
    ```
 
-3. Create a virtual environment using [poetry](https://python-poetry.org)
+3. Create a virtual environment using uv
 
    ``` sh
-   poetry install
+   uv sync
    ```
 
-4. (Optional) Install pre-commit environment
+4. (Optional) Install pre-commit environment using `pre-commit` or `prek`
 
-   ``` sh
-   $ pre-commit
-   [INFO] Installing environment for https://github.com/pre-commit/pre-commit-hooks.
-   [INFO] Once installed this environment will be reused.
-   [INFO] This may take a few minutes...
-   [INFO] Installing environment for https://github.com/psf/black.
-   [INFO] Once installed this environment will be reused.
-   [INFO] This may take a few minutes...
-   Check Yaml...........................................(no files to check)Skipped
-   Fix End of Files.....................................(no files to check)Skipped
-   Trim Trailing Whitespace.............................(no files to check)Skipped
-   black................................................(no files to check)Skipped
-   ```
 
 ## Configuration
 
