@@ -115,18 +115,27 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
     _logger.debug("Find all ad items in '%s'", url)
     for bs_ad_item in soup.find_all("article", class_="aditem"):
         try:
+            links = bs_ad_item.select(".text-module-begin > a")
+            if not links:
+                _logger.warning("Skipping ad item without title link at %s", url)
+                continue
+            descriptions = bs_ad_item.select(".aditem-main--middle--description")
+            locations = bs_ad_item.select('i[class*="icon-pin"]')
+            prices = bs_ad_item.select('p[class*="price"]')
+            images = bs_ad_item.select(".imagebox")
+
             ad_item = AdItem(
                 id=bs_ad_item.get("data-adid"),
                 url=urljoin(url, bs_ad_item.get("data-href")),
-                title=bs_ad_item.select(".text-module-begin>a")[0].text.strip(),
-                description=bs_ad_item.select(".aditem-main--middle--description")[0].text.strip(),
-                location=bs_ad_item.select('i[class*="icon-pin"]')[0].parent.text.strip(),
-                price=bs_ad_item.select('p[class*="price"]')[0].text.strip(),
-                image_url=bs_ad_item.select(".imagebox")[0].get("data-imgsrc"),
+                title=links[0].text.strip(),
+                description=descriptions[0].text.strip() if descriptions else "",
+                location=locations[0].parent.text.strip() if locations else "",
+                price=prices[0].text.strip() if prices else "",
+                image_url=images[0].get("data-imgsrc") if images else None,
                 is_top_ad=bool(bs_ad_item.select(".icon-feature-topad")),
                 pruneable=False,
             )
-        except IndexError as exc:
+        except Exception as exc:
             raise RuntimeError(
                 "Error parsing ads, this is probably caused by changes on kleinanzeigen.de\n\n"
                 "Please run this command again with the --verbose option and open an issue with its "
