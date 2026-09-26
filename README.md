@@ -46,7 +46,7 @@ The example configuration file will look like this:
       "sender": "<sender@example.com>",
       "recipient": ["<receiver@other.example.com>","<receiver@another.example.com>"],
       "bcc": ["<blindreceiver@third.example.com>","<blindreceiver@fourth.example.com>"]
-    },
+    }
   },
   "searches": [
     {
