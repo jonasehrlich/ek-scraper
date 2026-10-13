@@ -69,7 +69,10 @@ async def get_soup(session: aiohttp.ClientSession, url: str) -> bs4.BeautifulSou
 
 
 def get_all_pagination_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
-    """Get the URL of all anchor elements with class pagination-page
+    """Get the URL of all numbered pagination elements
+
+    Pages close to the current page are linked by anchor elements, pages further away only by span elements with a
+    data-url attribute.
 
     :param soup: BeautifulSoup object to get the pagination URLS from
     :type soup: bs4.BeautifulSoup
@@ -78,8 +81,14 @@ def get_all_pagination_urls(soup: bs4.BeautifulSoup, url: str) -> list[str]:
     :return: List of URLs
     :rtype: list[str]
     """
-    anchors = soup.select("a.pagination-page")
-    return [urljoin(url, href) for link_element in anchors if isinstance(href := link_element.get("href"), str)]
+    pagination_elements = soup.select('a[aria-label^="Seite "], span[aria-hidden="true"][data-url]')
+    return [
+        urljoin(url, href)
+        for element in pagination_elements
+        # The next and previous page buttons have no text, skip them to keep the furthest page last
+        if element.get_text(strip=True).isdigit()
+        and isinstance(href := (element.get("href") or element.get("data-url")), str)
+    ]
 
 
 async def resolve_all_pages(
@@ -113,26 +122,27 @@ async def resolve_all_pages(
 async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncGenerator[AdItem, None]:
     """Get all ad items in a list of BeautifulSoup objects"""
     _logger.debug("Find all ad items in '%s'", url)
-    for bs_ad_item in soup.find_all("article", class_="aditem"):
+    for bs_ad_item in soup.find_all("article", attrs={"data-adid": True}):
         try:
-            links = bs_ad_item.select(".text-module-begin > a")
-            if not links:
-                _logger.warning("Skipping ad item without title link at %s", url)
+            # Use the heading instead of its link, as the title of some ads is not wrapped in an anchor element
+            titles = bs_ad_item.select("h3")
+            if not titles:
+                _logger.warning("Skipping ad item without title at %s", url)
                 continue
-            descriptions = bs_ad_item.select(".aditem-main--middle--description")
-            locations = bs_ad_item.select('i[class*="icon-pin"]')
-            prices = bs_ad_item.select('p[class*="price"]')
-            images = bs_ad_item.select(".imagebox")
+            descriptions = bs_ad_item.select("h3 + p")
+            locations = bs_ad_item.select('svg[data-title="locationOutline"]')
+            prices = bs_ad_item.select("p.text-secondary")
+            images = bs_ad_item.select("[data-image-container] img")
 
             ad_item = AdItem(
                 id=bs_ad_item.get("data-adid"),
                 url=urljoin(url, bs_ad_item.get("data-href")),
-                title=links[0].text.strip(),
+                title=titles[0].text.strip(),
                 description=descriptions[0].text.strip() if descriptions else "",
                 location=locations[0].parent.text.strip() if locations else "",
                 price=prices[0].text.strip() if prices else "",
-                image_url=images[0].get("data-imgsrc") if images else None,
-                is_top_ad=bool(bs_ad_item.select(".icon-feature-topad")),
+                image_url=images[0].get("src") if images else None,
+                is_top_ad=bs_ad_item.find("div", string="TOP") is not None,
                 pruneable=False,
             )
         except Exception as exc:
@@ -142,6 +152,15 @@ async def get_ad_items_from_soup(soup: bs4.BeautifulSoup, url: str) -> ty.AsyncG
                 "output at https://github.com/jonasehrlich/ek-scraper/issues"
             ) from exc
         yield ad_item
+
+
+def page_contains_ads(soup: bs4.BeautifulSoup) -> bool:
+    """Return whether a page seems to contain ads, independent of the selectors used to parse them
+
+    :param soup: BeautifulSoup object of a search page
+    :return: Whether the page contains elements which look like ads
+    """
+    return bool(soup.select("#srchrslt-adtable > li, [data-adid]"))
 
 
 async def get_all_ad_items(url: str, recursive: bool) -> collections.abc.AsyncGenerator[AdItem, None]:
@@ -156,8 +175,18 @@ async def get_all_ad_items(url: str, recursive: bool) -> collections.abc.AsyncGe
         if recursive:
             await resolve_all_pages(session, url, soup_map)
 
+        num_ad_items = 0
         async for ad_item in achain(*[get_ad_items_from_soup(soup, url) for url, soup in soup_map.items()]):
+            num_ad_items += 1
             yield ad_item
+
+        if not num_ad_items and any(page_contains_ads(soup) for soup in soup_map.values()):
+            _logger.warning(
+                "No ads parsed from '%s', although it seems to contain ads. This is probably caused by changes on "
+                "kleinanzeigen.de\n\nPlease run this command again with the --verbose option and open an issue with "
+                "its output at https://github.com/jonasehrlich/ek-scraper/issues",
+                url,
+            )
 
 
 async def get_filtered_search_result(
