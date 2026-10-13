@@ -15,13 +15,8 @@ repos:
     # Ruff version.
     rev: "v0.17.0"
     hooks:
-      # Run the linter.
+      # Run the linter, including import sorting.
       - id: ruff-check
         args: [--fix]
       # Run the formatter.
       - id: ruff-format
-
-  - repo: https://github.com/pycqa/isort
-    rev: "7.0.0"
-    hooks:
-      - id: isort
