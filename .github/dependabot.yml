@@ -18,3 +18,31 @@ updates:
     open-pull-requests-limit: 1
     assignees:
       - jonasehrlich
+
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      pre-commit:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 1
+    assignees:
+      - jonasehrlich
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 1
+    assignees:
+      - jonasehrlich
