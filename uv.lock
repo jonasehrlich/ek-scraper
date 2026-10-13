@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 
 [[package]]
@@ -205,7 +205,7 @@ requires-dist = [
 dev = [
     { name = "isort", specifier = ">=5.12,<10.0" },
     { name = "mypy", specifier = ">=1.8.0,<3" },
-    { name = "ruff", specifier = ">=0.13.0,<0.16.11" },
+    { name = "ruff", specifier = ">=0.13.0,<0.17.1" },
     { name = "ty", specifier = ">=0.0.61" },
     { name = "types-beautifulsoup4", specifier = ">=4.12.0.5,<5" },
 ]
