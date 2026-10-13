@@ -52,7 +52,7 @@ class PushoverConfig(pydantic.BaseModel):
 
 class EmailConfig(pydantic.BaseModel):
     smtp_host: str
-    smtp_port: str
+    smtp_port: int
     username: str
     password: str
     sender: str
