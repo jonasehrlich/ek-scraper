@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import typing as ty
 import smtplib
-from email.mime.text import MIMEText
+import typing as ty
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 from ek_scraper.config import EmailConfig
 
@@ -15,13 +15,13 @@ if ty.TYPE_CHECKING:
     from ek_scraper.scraper import Result
 
 
-
 _logger = logging.getLogger(__name__)
 
 
 async def send_notification(session, config: EmailConfig, result: Result) -> None:
     # session is ignored here, kept for interface compatibility
     await asyncio.to_thread(_send_email, config, result)
+
 
 def _send_email(config: EmailConfig, result: Result) -> None:
     try:
@@ -38,12 +38,12 @@ def _send_email(config: EmailConfig, result: Result) -> None:
         body_lines = []
         for ad in result.ad_items:
             body_lines.append(
-            f"Title: {ad.title}\n"
-            f"Price: {ad.price}\n"
-            f"Location: {ad.location}\n"
-            f"Link: {ad.url}\n"
-            f"Description: {ad.description}\n"
-        )
+                f"Title: {ad.title}\n"
+                f"Price: {ad.price}\n"
+                f"Location: {ad.location}\n"
+                f"Link: {ad.url}\n"
+                f"Description: {ad.description}\n"
+            )
 
         ads_section = "\n\n".join(body_lines)
         email_body = body + "\n\n" + ads_section

@@ -186,11 +186,11 @@ configuration file and add the topic you previously subscribed to.
 
 `ek-scraper` supports push notifications to your devices using E-Mail.
 
-The implementation for _E-Mail_ notifications will send a single Email containing the new results per 
+The implementation for _E-Mail_ notifications will send a single Email containing the new results per
 search, if new ads are discovered.
 
-To configure _E-Mail_ for notifications from the scraper, you need to add your smtp server details and 
-credentials. To use the service in `ek-scraper`, add the `email` object to the `notifications` object in 
+To configure _E-Mail_ for notifications from the scraper, you need to add your smtp server details and
+credentials. To use the service in `ek-scraper`, add the `email` object to the `notifications` object in
 your configuration file. Currently only supporting STARTTLS.
 
 | Name         | Description |

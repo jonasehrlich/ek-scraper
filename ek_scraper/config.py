@@ -49,9 +49,10 @@ class PushoverConfig(pydantic.BaseModel):
             data["device"] = ",".join(self.device)
         return data
 
+
 class EmailConfig(pydantic.BaseModel):
     smtp_host: str
-    smtp_port: str
+    smtp_port: int
     username: str
     password: str
     sender: str
@@ -65,6 +66,7 @@ class NotificationsConfig(pydantic.BaseModel):
     pushover: PushoverConfig | None = None
     ntfy_sh: NtfyShConfig | None = pydantic.Field(default=None, alias="ntfy.sh")
     email: EmailConfig | None = None
+
 
 class Config(pydantic.BaseModel):
     """Overall configuration object"""

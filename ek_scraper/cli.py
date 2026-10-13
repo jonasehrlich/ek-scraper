@@ -15,7 +15,7 @@ from ek_scraper import __version__
 from ek_scraper.config import Config, NotificationsConfig, SearchConfig
 from ek_scraper.data_store import DataStore
 from ek_scraper.error import UnexpectedHTMLResponse
-from ek_scraper.notifications import ConfiguredSendNotifications, SendNotifications, ntfy_sh, pushover, email
+from ek_scraper.notifications import ConfiguredSendNotifications, SendNotifications, email, ntfy_sh, pushover
 from ek_scraper.scraper import Result, get_filtered_search_result, mark_ad_items_as_non_pruneable
 
 _logger = logging.getLogger(__name__.split(".", 1)[0])
