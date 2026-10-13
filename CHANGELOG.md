@@ -1,6 +1,39 @@
 <!-- markdownlint-disable MD024 -->
 # Changelog
 
+## v0.3.0
+
+### Added
+
+* Add support for email notifications via SMTP with STARTTLS ([#281])
+* Log a warning if a search result page seems to contain ads, but none could be parsed ([#308])
+
+### Changed
+
+* Add CI workflow running ruff, ty and the package build, and only publish to PyPI after it passed ([#308])
+* Replace isort with ruff import sorting ([#308])
+
+### Fixed
+
+* Fix parsing of ads and pagination links after markup changes on kleinanzeigen.de ([#308])
+* Fix type of the `smtp_port` email option to integer, ports given as strings are still accepted ([#308])
+* Fix invalid JSON in the example configuration in the README ([#302])
+
+## v0.2.4
+
+### Changed
+
+* Require Python 3.11 or newer, previously 3.9 (`c1045ae`)
+* Switch from poetry to uv and hatchling for build and dependency management (`c1045ae`)
+* Publish to PyPI using uv and trusted publishing (`1f50de2`, `a0c6b4a`)
+* Recommend installing with `uv tool install` instead of pipx in the README (`5545f88`)
+
+## v0.2.3
+
+### Fixed
+
+* Fix loading of configuration files with `exclude_patterns`, which failed with a validation error (`2bbbeb1`)
+
 ## v0.2.2
 
 ### Changed
@@ -20,12 +53,12 @@
 
 ### Added
 
-* Add support for [ntfy.sh](https://ntfy.sh) as a notification service (`5707d5b`)
+* Add support for [ntfy.sh](https://ntfy.sh) as a notification service ([#48])
 * Add `--temp-data-store` CLI flag to run with a temporary, empty data-store
 
 ### Changed
 
-* Use [pydantic](https://pydantic.dev) for data validation and serialization (`8d28907`)
+* Use [pydantic](https://pydantic.dev) for data validation and serialization ([#49])
 * Update runtime dependencies to latest versions
   * *lxml* from 4.9.2 to 4.9.4
   * *aiohttp* from 3.8.4 to 3.9.1
@@ -34,11 +67,11 @@
 
 ### Changed
 
-* Switch to poetry for build and dependency management (`b469870`)
+* Switch to poetry for build and dependency management ([#8])
 
 ### Fixed
 
-* Fix parsing of the ad location from HTML (`6139b27`)
+* Fix parsing of the ad location from HTML ([#9])
 * Fix error message if no command is provided (`f340a24`)
 
 ## v0.0.5
@@ -68,3 +101,11 @@ Initial PyPI release
 
 * Initial package setup
 * PyPI release workflow
+
+[#8]: https://github.com/jonasehrlich/ek-scraper/pull/8
+[#9]: https://github.com/jonasehrlich/ek-scraper/pull/9
+[#48]: https://github.com/jonasehrlich/ek-scraper/pull/48
+[#49]: https://github.com/jonasehrlich/ek-scraper/pull/49
+[#281]: https://github.com/jonasehrlich/ek-scraper/pull/281
+[#302]: https://github.com/jonasehrlich/ek-scraper/pull/302
+[#308]: https://github.com/jonasehrlich/ek-scraper/pull/308
