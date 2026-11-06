@@ -43,6 +43,10 @@ class PushoverConfig(pydantic.BaseModel):
     user: str
     device: list[str] = pydantic.Field(default_factory=list)
 
+class TelegramConfig(pydantic.BaseModel):
+    bot_token: str
+    chat_id: int
+
     def model_dump_api(self) -> dict[str, ty.Any]:
         data = self.model_dump()
         if self.device:
@@ -66,7 +70,7 @@ class NotificationsConfig(pydantic.BaseModel):
     pushover: PushoverConfig | None = None
     ntfy_sh: NtfyShConfig | None = pydantic.Field(default=None, alias="ntfy.sh")
     email: EmailConfig | None = None
-
+    telegram: TelegramConfig | None = None
 
 class Config(pydantic.BaseModel):
     """Overall configuration object"""
