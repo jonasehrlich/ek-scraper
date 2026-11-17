@@ -1,6 +1,10 @@
 <!-- markdownlint-disable MD024 -->
 # Changelog
 
+## v0.4.0
+
+* Update minimum Python version to 3.12
+
 ## v0.3.0
 
 ### Added
