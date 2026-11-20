@@ -34,6 +34,10 @@ The example configuration file will look like this:
         "user": "<your-user-api-token>",
         "device": []
     },
+    "telegram": {
+      "bot_token": "<your-bot-token>",
+      "chat_id": <your-chat-id>
+    },
     "ntfy.sh": {
       "topic": "<your-private-topic>",
       "priority": 3
@@ -154,6 +158,23 @@ devices which will receive the notifications, is supported using the `device` ar
 | `user`   | API token of the Pushover user (required) |
 | `device` | List of device names to send the notifications to <br/> (optional, defaults to all devices) |
 
+#### Push notifications using [Telegram](https://core.telegram.org/bots)
+
+`ek-scraper` supports push notifications to your devices using [Telegram](https://core.telegram.org/bots).
+For further information on the service check their terms and conditions.
+
+The implementation for _telegram_ notifications will send a single notification per search, if new
+ads are discovered.
+
+To configure _Telegram_ for notifications from the scraper, first create a bot  at the service and find your chat_id 
+. To use the service in `ek-scraper`, add the `telegram` object
+to the `notifications` object in your configuration file and fill the `chat_id` and `bot_token` field.
+
+| Name     | Description |
+| -------- | ------------------------------------------------------------------------------------------- |
+| `bot_token`  | Telegram bot token (required) |
+| `chat_id`   | Telegram  chat id (required) |
+
 #### Push notifications using [ntfy.sh](https://ntfy.sh/)
 
 ![Screenshot of a push notification using ntfy.sh](assets/ntfy-sh-notification.jpeg)
@@ -221,3 +242,4 @@ Edit the crontab table to run the command you want to run. A handy tool to check
 configurations for cronjobs is [crontab.guru](https://crontab.guru/).
 
 For more information on configuring cronjobs use your favorite search engine.
+
